@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 사무실</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>AI 사무실</h1>
+    <div id="status" class="status" role="status" aria-live="polite">확인 중</div>
+  </header>
+
+  <main class="building">
+    <nav class="panel" aria-label="층 이동">
+      <div class="display" aria-hidden="true">
+        <span id="dir" class="dir"></span><span id="floorNo">1</span>
+      </div>
+      <ol id="buttons" class="buttons"></ol>
+    </nav>
+
+    <section class="shaft" aria-label="사무실">
+      <div id="stack" class="stack"></div>
+    </section>
+  </main>
+
+  <footer class="legend">
+    <span>⌨️ 작업 중</span>
+    <span>💧 40분 넘음 · 막힘</span>
+    <span>⭐ 결과 보고</span>
+    <span>☕ 대기</span>
+    <span>💤 오래 대기</span>
+    <span>❓ 질문 대기 줄</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

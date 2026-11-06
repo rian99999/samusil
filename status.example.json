@@ -1,0 +1,65 @@
+{
+  "updatedAt": "2026-11-06T15:26:13.388Z",
+  "dayEnded": false,
+  "floors": [
+    {
+      "id": "web",
+      "name": "웹 화면팀"
+    },
+    {
+      "id": "api",
+      "name": "서버팀"
+    },
+    {
+      "id": "data",
+      "name": "데이터팀"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "s1",
+      "name": "총괄 비서",
+      "floor": "ceo",
+      "state": "working",
+      "parentId": null,
+      "startedAt": "2026-11-06T15:12:07.649Z",
+      "stateSince": "2026-11-06T15:24:07.651Z"
+    },
+    {
+      "id": "s2",
+      "name": "로그인 화면",
+      "floor": "web",
+      "state": "working",
+      "parentId": null,
+      "startedAt": "2026-11-06T15:16:07.651Z",
+      "stateSince": "2026-11-06T15:24:07.651Z"
+    },
+    {
+      "id": "s3",
+      "name": "결제 페이지",
+      "floor": "web",
+      "state": "working",
+      "parentId": null,
+      "startedAt": "2026-11-06T14:32:07.651Z",
+      "stateSince": "2026-11-06T15:24:07.651Z"
+    },
+    {
+      "id": "s4",
+      "name": "디자인 점검",
+      "floor": "web",
+      "state": "reporting",
+      "parentId": null,
+      "startedAt": "2026-11-06T14:54:07.651Z",
+      "stateSince": "2026-11-06T15:25:34.716Z"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "sessionId": "s5",
+      "from": "주문 API",
+      "text": "결제 실패 시 재시도 횟수를 몇 번으로 할까요?",
+      "askedAt": "2026-11-06T15:12:07.651Z"
+    }
+  ]
+}
