@@ -105,7 +105,10 @@
       const root = el("article", "floor");
       root.dataset.id = f.id;
       const head = el("div", "floor-head");
-      head.append(el("span", "no", `${no}F`), el("span", "nm", f.name));
+      const title = el("div", "title");
+      title.append(el("span", "nm", f.name), el("span", "sub",
+        f.kind === "lobby" ? "모든 세션이 모이는 곳" : f.kind === "ceo" ? "질문은 문 앞에 줄을 섭니다" : "이 팀의 작업 세션"));
+      head.append(el("span", "badge", `${no}F`), title);
       const chips = el("div", "chips");
       head.append(chips);
       const room = el("div", "room");
@@ -128,7 +131,8 @@
       b.type = "button";
       const lamp = el("span", "lamp");
       const cnt = el("span", "cnt");
-      b.append(lamp, el("span", "no", `${no}F`), el("span", "nm", f.name), cnt);
+      b.append(el("span", "no", String(no)), el("span", "nm", f.name), cnt, lamp);
+      b.setAttribute("aria-label", `${no}층 ${f.name}`);
       b.addEventListener("click", () => goTo(i));
       li.append(b);
       $("#buttons").prepend(li);
@@ -161,6 +165,7 @@
   }
 
   document.addEventListener("keydown", (e) => {
+    if (document.querySelector("#help[open]")) return;
     if (e.key === "ArrowUp" || e.key === "PageUp") { goTo(current + 1); e.preventDefault(); }
     if (e.key === "ArrowDown" || e.key === "PageDown") { goTo(current - 1); e.preventDefault(); }
   });
@@ -329,8 +334,9 @@
       for (const s of list) c[s.state in c ? s.state : "idle"]++;
       f.chips.textContent = "";
       const chip = (t, cls) => { const s = el("span", cls, t); f.chips.append(s); };
-      chip(`작업 ${c.working}`); chip(`막힘 ${c.blocked}`); chip(`보고 ${c.reporting}`); chip(`대기 ${c.idle}`);
-      if (f.kind === "ceo") chip(`질문 ${questions.length}`);
+      chip(`작업 ${c.working}`, "k-work"); chip(`막힘 ${c.blocked}`, "k-block");
+      chip(`보고 ${c.reporting}`, "k-report"); chip(`대기 ${c.idle}`, "k-idle");
+      if (f.kind === "ceo") chip(`질문 ${questions.length}`, "k-ask");
       if (overflow) chip(`자리 부족 +${overflow}명 (표시 안 됨)`, "overflow");
       f.cnt.textContent = f.kind === "ceo" ? `${list.length}명 · ❓${questions.length}` : `${list.length}명`;
     }
@@ -406,8 +412,9 @@
     }
     const st = $("#status");
     st.classList.toggle("checking", v);
-    if (v) st.textContent = `확인 중 – ${reason}`;
-    else st.textContent = `정상 · 마지막 갱신 ${new Date(ms(data.updatedAt)).toLocaleTimeString("ko-KR")}`;
+    const txt = $("#statusText");
+    if (v) txt.textContent = `확인 중 · ${reason}`;
+    else txt.textContent = `실시간 · ${new Date(ms(data.updatedAt)).toLocaleTimeString("ko-KR")} 갱신`;
   }
 
   function watchdog() {
@@ -456,8 +463,23 @@
     setInterval(watchdog, 250);
     requestAnimationFrame(tick);
   }
+  // ------------------------------------------------------------ 사용설명서 창
+  const help = $("#help");
+  const openHelp = () => { if (!help.open) help.showModal(); };
+  $("#helpBtn").addEventListener("click", openHelp);
+  $("#helpClose").addEventListener("click", () => help.close());
+  $("#helpOk").addEventListener("click", () => help.close());
+  help.addEventListener("click", (e) => { if (e.target === help) help.close(); }); // 바깥 누르면 닫힘
+  help.addEventListener("close", () => { try { localStorage.setItem("office-help-seen", "1"); } catch (_) {} });
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "?" || e.key === "F1") && !help.open) { openHelp(); e.preventDefault(); }
+  });
+  let seen = false;
+  try { seen = localStorage.getItem("office-help-seen") === "1"; } catch (_) {}
+  if (!seen || qs.has("help")) openHelp(); // 처음 온 사람에게는 자동으로 띄움
+
   start().catch((e) => {
-    $("#status").textContent = "확인 중 – 시작 실패: " + e.message;
+    $("#statusText").textContent = "확인 중 · 시작 실패: " + e.message;
     $("#status").classList.add("checking");
   });
 })();
