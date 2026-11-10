@@ -123,7 +123,9 @@
       const mask = el("div", "checking-mask");
       mask.append(el("span", null, "확인 중 – 움직임 정지"));
       room.append(night, mask);
-      root.append(head, room);
+      const scroller = el("div", "room-scroll"); // 휴대폰에서는 사무실을 크게 놓고 좌우로 밀어서 본다
+      scroller.append(room);
+      root.append(head, scroller);
       stack.prepend(root); // 위층이 위에 오도록
 
       const li = el("li");
@@ -134,6 +136,7 @@
       b.append(el("span", "no", String(no)), el("span", "nm", f.name), cnt, lamp);
       b.setAttribute("aria-label", `${no}층 ${f.name}`);
       b.addEventListener("click", () => goTo(i));
+      li.style.setProperty("--o", no); // 휴대폰 가로 줄에서는 1층부터 왼쪽→오른쪽
       li.append(b);
       $("#buttons").prepend(li);
 
@@ -142,7 +145,22 @@
     const idx = floors.findIndex((f) => f.id === prevId);
     goTo(idx >= 0 ? idx : Math.min(current, floors.length - 1), true);
     dayEnded = null; // 불 상태 다시 적용
+    requestAnimationFrame(centerRooms);
   }
+
+  // 휴대폰: 넓은 사무실 그림의 가운데부터 보이게
+  const narrow = () => window.matchMedia("(max-width: 760px)").matches;
+  function centerRooms() {
+    for (const f of floors) {
+      const sc = f.root.querySelector(".room-scroll");
+      if (sc && !sc.dataset.touched) sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2;
+      if (sc && !sc.dataset.bound) {
+        sc.dataset.bound = "1";
+        sc.addEventListener("pointerdown", () => (sc.dataset.touched = "1"), { passive: true });
+      }
+    }
+  }
+  window.addEventListener("resize", () => requestAnimationFrame(centerRooms));
 
   function goTo(i, instant) {
     i = Math.max(0, Math.min(floors.length - 1, i));
@@ -162,10 +180,16 @@
     clearTimeout(goTo.t);
     goTo.t = setTimeout(() => (dir.textContent = ""), 900);
     try { history.replaceState(null, "", `#${encodeURIComponent(floors[i].id)}`); } catch (_) {}
+    if (narrow()) {
+      // 가로 층 줄에서 고른 층 버튼이 화면 안에 오도록 (페이지는 위아래로 움직이지 않음)
+      const strip = $("#buttons"), btn = floors[i].btn;
+      const left = btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2;
+      try { strip.scrollTo({ left, behavior: instant ? "auto" : "smooth" }); } catch (_) { strip.scrollLeft = left; }
+    }
   }
 
   document.addEventListener("keydown", (e) => {
-    if (document.querySelector("#help[open]")) return;
+    if (document.querySelector("dialog[open]")) return;
     if (e.key === "ArrowUp" || e.key === "PageUp") { goTo(current + 1); e.preventDefault(); }
     if (e.key === "ArrowDown" || e.key === "PageDown") { goTo(current - 1); e.preventDefault(); }
   });
@@ -178,6 +202,11 @@
     const tag = el("div", "tag", label);
     tag.style.setProperty("--c", color);
     root.append(sprite, fx, tag);
+    root.tabIndex = 0;
+    root.setAttribute("role", "button");
+    const open = () => showInfo(root);
+    root.addEventListener("click", open); // 휴대폰은 마우스 올리기가 없으므로 눌러서 본다
+    root.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
     floor.room.append(root);
     return {
       key, kind, floor, root, sprite, fx, tag,
@@ -318,6 +347,7 @@
           ? `\n질문: ${w.q.text || "(내용 없음)"}`
           : `\n층: ${w.s.floor ?? "-"}${w.s.parentId ? `\n상위 작업: ${w.s.parentId}` : ""}`;
         a.root.title = `${label}\n${w.look.text}${extra}`;
+        a.root.setAttribute("aria-label", `${label}, ${w.look.text}`);
       }
       // 사라진 사람 → 퇴근
       for (const [key, a] of f.actors) {
@@ -476,6 +506,78 @@
     setInterval(watchdog, 250);
     requestAnimationFrame(tick);
   }
+  // ------------------------------------------------------------ 사람 상세 (눌러서 보기)
+  function showInfo(root) {
+    const lines = (root.title || "").split("\n");
+    $("#infoName").textContent = lines[0] || "";
+    const list = $("#infoList");
+    list.textContent = "";
+    for (const ln of lines.slice(1)) list.append(el("li", null, ln));
+    const d = $("#info");
+    if (!d.open) d.showModal();
+  }
+  $("#infoClose").addEventListener("click", () => $("#info").close());
+  $("#info").addEventListener("click", (e) => { if (e.target.id === "info") e.target.close(); });
+
+  // ------------------------------------------------------------ 업무 맡기기 (지시서 만들기 → 복사)
+  const task = $("#task"), form = $("#taskForm");
+  const DRAFT = "office-task-draft";
+  const FIELDS = ["tTopic", "tTarget", "tMessage", "tFacts", "tBan"];
+  function loadDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT) || "{}");
+      for (const id of FIELDS) if (d[id] != null) $("#" + id).value = d[id];
+      if (Array.isArray(d.ch)) form.querySelectorAll("input[name=ch]").forEach((c) => (c.checked = d.ch.includes(c.value)));
+    } catch (_) {}
+  }
+  function saveDraft() {
+    const d = { ch: [...form.querySelectorAll("input[name=ch]:checked")].map((c) => c.value) };
+    for (const id of FIELDS) d[id] = $("#" + id).value;
+    try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch (_) {}
+  }
+  function openTask() {
+    loadDraft();
+    task.classList.remove("done");
+    $("#copyMsg").textContent = "";
+    if (!task.open) task.showModal();
+  }
+  document.querySelectorAll("[data-open-task]").forEach((b) => b.addEventListener("click", openTask));
+  $("#taskClose").addEventListener("click", () => task.close());
+  $("#taskBack").addEventListener("click", () => task.classList.remove("done"));
+  form.addEventListener("input", saveDraft);
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const ch = [...form.querySelectorAll("input[name=ch]:checked")].map((c) => c.value);
+    if (!$("#tTopic").value.trim()) { $("#topicErr").hidden = false; $("#tTopic").focus(); return; }
+    $("#topicErr").hidden = true;
+    if (!ch.length) { $("#chErr").hidden = false; return; }
+    $("#chErr").hidden = true;
+    const v = (id) => $("#" + id).value.trim() || "(없음)";
+    const text = [
+      "/office-run",
+      "[업무 지시서]",
+      `주제: ${$("#tTopic").value.trim()}`,
+      `대상 고객: ${v("tTarget")}`,
+      `핵심 메시지: ${v("tMessage")}`,
+      `사실 자료: ${v("tFacts")}`,
+      `금지할 것: ${v("tBan")}`,
+      `채널: ${ch.join(", ")}`,
+    ].join("\n");
+    $("#taskOut").value = text;
+    task.classList.add("done");
+    saveDraft();
+  });
+  $("#copyBtn").addEventListener("click", async () => {
+    const out = $("#taskOut");
+    try {
+      await navigator.clipboard.writeText(out.value);
+      $("#copyMsg").textContent = "복사했습니다. Claude 앱 대화창에 붙여넣고 보내세요.";
+    } catch (_) {
+      out.focus(); out.select();
+      $("#copyMsg").textContent = "자동 복사가 막혀 있어 글을 선택해 두었습니다. 길게 눌러 '복사'를 고르세요.";
+    }
+  });
+
   // ------------------------------------------------------------ 사용설명서 창
   const help = $("#help");
   const openHelp = () => { if (!help.open) help.showModal(); };
@@ -485,7 +587,9 @@
   help.addEventListener("click", (e) => { if (e.target === help) help.close(); }); // 바깥 누르면 닫힘
   help.addEventListener("close", () => { try { localStorage.setItem("office-help-seen", "1"); } catch (_) {} });
   document.addEventListener("keydown", (e) => {
-    if ((e.key === "?" || e.key === "F1") && !help.open) { openHelp(); e.preventDefault(); }
+    if (e.target.closest && e.target.closest("input, textarea, select")) return; // 글 쓰는 중에는 무시
+    if (document.querySelector("dialog[open]")) return;
+    if (e.key === "?" || e.key === "F1") { openHelp(); e.preventDefault(); }
   });
   let seen = false;
   try { seen = localStorage.getItem("office-help-seen") === "1"; } catch (_) {}

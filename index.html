@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI 사무실</title>
+  <meta name="theme-color" content="#2c3038">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AI 사무실">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,8 +23,9 @@
       <div id="status" class="status checking" role="status" aria-live="polite">
         <span class="dot" aria-hidden="true"></span><span id="statusText">확인 중</span>
       </div>
-      <button id="helpBtn" class="help-btn" type="button" aria-haspopup="dialog">
-        <span aria-hidden="true">?</span> 사용설명서
+      <button class="task-btn" type="button" data-open-task aria-haspopup="dialog">＋ 업무 맡기기</button>
+      <button id="helpBtn" class="help-btn" type="button" aria-haspopup="dialog" aria-label="사용설명서">
+        <span aria-hidden="true">?</span><em>사용설명서</em>
       </button>
     </div>
   </header>
@@ -47,6 +52,76 @@
     <span><i class="mini" style="--c:1;--r:2"></i>💤 오래 대기</span>
     <span><i class="mini" style="--c:2;--r:2"></i>❓ 질문 줄</span>
   </footer>
+
+  <!-- 휴대폰: 엄지로 누르는 업무 맡기기 버튼 -->
+  <button class="fab" type="button" data-open-task aria-haspopup="dialog">＋ 업무 맡기기</button>
+
+  <!-- 사람 상세 (눌러서 보기) -->
+  <dialog id="info" class="sheet" aria-labelledby="infoName">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="infoName"></h2>
+      <button id="infoClose" class="icon-btn" type="button" aria-label="닫기">✕</button>
+    </div>
+    <ul id="infoList" class="info-list"></ul>
+  </dialog>
+
+  <!-- 업무 맡기기 -->
+  <dialog id="task" class="sheet task" aria-labelledby="taskTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">업무 맡기기</p>
+        <h2 id="taskTitle">직원들에게 시킬 일</h2>
+      </div>
+      <button id="taskClose" class="icon-btn" type="button" aria-label="닫기">✕</button>
+    </div>
+
+    <form id="taskForm" class="task-form" novalidate>
+      <label for="tTopic">무엇을 알릴까요? <b class="req">필수</b></label>
+      <input id="tTopic" name="topic" required placeholder="예: 11월 신메뉴 '유자 크림 라떼' 출시" autocomplete="off">
+      <p id="topicErr" class="err" hidden>무엇을 알릴지 적어 주세요.</p>
+
+      <label for="tTarget">누구에게?</label>
+      <input id="tTarget" name="target" placeholder="예: 회사 근처 20~30대 직장인" autocomplete="off">
+
+      <label for="tMessage">꼭 전할 말</label>
+      <textarea id="tMessage" name="message" rows="2" placeholder="예: 상큼하고 덜 달다, 11월 한정"></textarea>
+
+      <label for="tFacts">정확한 사실 (가격·기간·주소 등)</label>
+      <textarea id="tFacts" name="facts" rows="3" placeholder="예: 5,500원 / 11월 11일~30일 / 서울 마포구 ○○로 12"></textarea>
+      <p class="hint">여기 적지 않은 가격·숫자·효과는 직원이 지어내지 않고 [확인 필요]로 비워 둡니다.</p>
+
+      <label for="tBan">쓰면 안 되는 것</label>
+      <input id="tBan" name="ban" placeholder="예: 다른 가게 이름, '최고' 같은 과장" autocomplete="off">
+
+      <fieldset>
+        <legend>어느 팀이 할까요?</legend>
+        <label class="check"><input type="checkbox" name="ch" value="네이버 블로그" checked> 네이버 블로그</label>
+        <label class="check"><input type="checkbox" name="ch" value="인스타그램" checked> 인스타그램</label>
+        <label class="check"><input type="checkbox" name="ch" value="스레드" checked> 스레드</label>
+        <label class="check"><input type="checkbox" name="ch" value="디자인" checked> 디자인</label>
+        <p id="chErr" class="err" hidden>팀을 하나 이상 골라 주세요.</p>
+      </fieldset>
+
+      <button class="primary wide" type="submit">지시서 만들기</button>
+    </form>
+
+    <div class="task-result">
+      <ol class="how">
+        <li><b>복사하기</b>를 누릅니다.</li>
+        <li>Claude 앱에서 <b>samusil</b> 저장소의 Claude Code 대화를 엽니다. (주소: <a href="https://claude.ai/code" target="_blank" rel="noopener">claude.ai/code</a>)</li>
+        <li>대화창에 붙여넣고 보냅니다. 끝나면 총괄 실장이 보고합니다.</li>
+      </ol>
+      <label for="taskOut" class="sr">만들어진 지시서</label>
+      <textarea id="taskOut" rows="9" readonly></textarea>
+      <p id="copyMsg" class="copy-msg" role="status" aria-live="polite"></p>
+      <div class="row">
+        <button id="taskBack" class="ghost" type="button">고치기</button>
+        <button id="copyBtn" class="primary" type="button">복사하기</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- 사용설명서 창 -->
   <dialog id="help" class="help" aria-labelledby="helpTitle">
@@ -85,7 +160,7 @@
               <tr><td><i class="mini" style="--c:1;--r:2"></i></td><td><b>💤 졸음</b></td><td>10분 넘게 기다리는 중</td></tr>
             </tbody>
           </table>
-          <p>사람에 마우스를 올리면 이름, 상태, 걸린 시간이 나옵니다.</p>
+          <p>사람을 <b>누르면</b> 이름, 상태, 걸린 시간이 나옵니다. (컴퓨터는 마우스를 올려도 됩니다.)</p>
         </li>
         <li>
           <h3>출근과 퇴근</h3>
@@ -103,6 +178,11 @@
         <li>
           <h3>하루가 끝나면</h3>
           <p>하루 끝 신호가 오면 맨 위층부터 아래층까지 차례로 불이 꺼집니다. 버튼 옆 작은 전등도 같이 꺼집니다.</p>
+        </li>
+        <li>
+          <h3>휴대폰으로 일 시키기</h3>
+          <p>아래 <b>＋ 업무 맡기기</b>를 누르고 빈칸을 채운 뒤 <b>지시서 만들기 → 복사하기</b>. Claude 앱의 samusil 대화에 붙여넣고 보내면 직원들이 일을 시작합니다. 질문이 생기면 그 대화에서 묻습니다.</p>
+          <p>휴대폰에서는 위쪽 층 이름을 눌러 층을 옮기고, 사무실 그림은 <b>좌우로 밀어서</b> 봅니다.</p>
         </li>
         <li>
           <h3>실제 자료 연결 (관리자용)</h3>
