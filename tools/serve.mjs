@@ -22,7 +22,7 @@ function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
   try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw e; }
-  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, roles: cfg.roles || {}, sessions: s.sessions || [], questions: s.questions || [] };
+  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
 }
 
 http.createServer((req, res) => {

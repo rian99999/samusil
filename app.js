@@ -552,6 +552,15 @@
     const list = $("#infoList");
     list.textContent = "";
     for (const ln of lines.slice(1)) list.append(el("li", null, ln));
+    if (root.dataset.role) {
+      const mine = siteList().filter((x) => x.roles.includes("*") || x.roles.includes(root.dataset.role));
+      if (mine.length) {
+        const li = el("li", "info-sites");
+        li.append(el("b", null, "연결된 사이트"));
+        for (const x of mine) { const a = el("a", null, `${x.name} (${PURPOSES[x.purpose] || x.purpose})`); a.href = x.url; a.target = "_blank"; a.rel = "noopener"; li.append(a); }
+        list.append(li);
+      }
+    }
     const btn = $("#infoRename");
     btn.hidden = !root.dataset.role;
     btn.dataset.role = root.dataset.role || "";
@@ -559,6 +568,90 @@
     if (!d.open) d.showModal();
   }
   $("#infoRename").addEventListener("click", (e) => { const r = e.currentTarget.dataset.role; $("#info").close(); openRoster(r); });
+
+  // ------------------------------------------------------------ 사이트 연결
+  // 직원마다 참고할 사이트를 묶어 둔다. 업무 지시서에 함께 들어가서 직원이 그 사이트를 읽고 쓴다.
+  const SITES_KEY = "office-sites";
+  const PURPOSES = { mine: "우리 채널", ref: "참고", rival: "경쟁사", etc: "기타" };
+  const CHANNEL_ROLE = { "네이버 블로그": "naver-blog-marketer", "인스타그램": "instagram-marketer", "스레드": "threads-marketer", "디자인": "designer" };
+  let sitesLocal = null;
+  try { const v = JSON.parse(localStorage.getItem(SITES_KEY) || "null"); if (Array.isArray(v)) sitesLocal = v; } catch (_) {}
+  const cleanSite = (x) => x && typeof x.url === "string" && /^https?:\/\//i.test(x.url)
+    ? { id: String(x.id || x.url), name: String(x.name || x.url).slice(0, 40), url: x.url, purpose: PURPOSES[x.purpose] ? x.purpose : "ref",
+        roles: Array.isArray(x.roles) && x.roles.length ? x.roles.map(String) : ["*"] }
+    : null;
+  // 이 브라우저에서 고친 목록이 있으면 그것, 없으면 설정 파일(status.json 의 sites)
+  function siteList() { return (sitesLocal ?? ((data && data.sites) || [])).map(cleanSite).filter(Boolean); }
+  function saveSites(list) { sitesLocal = list; try { localStorage.setItem(SITES_KEY, JSON.stringify(list)); } catch (_) {} }
+  function roleName(role) { if (role === "*") return "모든 직원"; const r = roleInfo(role); return r ? (r.person ? `${r.person}(${r.title})` : r.title) : role; }
+  function sitesForOrder(channels) {
+    const roles = new Set(["chief-reviewer", ...channels.map((c) => CHANNEL_ROLE[c]).filter(Boolean)]);
+    const pick = siteList().filter((x) => x.roles.includes("*") || x.roles.some((r) => roles.has(r)));
+    if (!pick.length) return [];
+    return ["참고 사이트:", ...pick.map((x) => {
+      const who = x.roles.includes("*") ? "모든 직원" : x.roles.filter((r) => roles.has(r)).map((r) => (roleInfo(r) || { title: r }).title).join("·");
+      return `- ${who}: ${x.name} ${x.url} [${PURPOSES[x.purpose]}]`;
+    })];
+  }
+  const sitesDlg = $("#sites");
+  function renderSites() {
+    const list = $("#siteList");
+    list.textContent = "";
+    const items = siteList();
+    $("#siteEmpty").hidden = items.length > 0;
+    for (const x of items) {
+      const li = el("li", "site-row");
+      const top = el("div", "site-top");
+      const a = el("a", "site-name", x.name); a.href = x.url; a.target = "_blank"; a.rel = "noopener";
+      const chip = el("span", "site-purpose p-" + x.purpose, PURPOSES[x.purpose]);
+      const del = el("button", "site-del", "삭제"); del.type = "button"; del.setAttribute("aria-label", x.name + " 삭제");
+      del.addEventListener("click", () => { saveSites(siteList().filter((y) => y.id !== x.id)); renderSites(); $("#siteMsg").textContent = `'${x.name}'을(를) 뺐습니다.`; });
+      top.append(a, chip, del);
+      const url = el("div", "site-url", x.url);
+      const who = el("div", "site-who", "연결: " + x.roles.map(roleName).join(", "));
+      li.append(top, url, who);
+      list.append(li);
+    }
+    // 직원 고르기 칸
+    const box = $("#siteRoles");
+    box.textContent = "";
+    for (const role of ["*", ...roleKeys()]) {
+      const lab = el("label", "check");
+      const cb = el("input"); cb.type = "checkbox"; cb.name = "sr"; cb.value = role; cb.checked = role === "*";
+      lab.append(cb, document.createTextNode(" " + roleName(role)));
+      box.append(lab);
+    }
+  }
+  function openSites() { renderSites(); $("#siteMsg").textContent = ""; $("#siteErr").textContent = ""; if (!sitesDlg.open) sitesDlg.showModal(); }
+  document.querySelectorAll("[data-open-sites]").forEach((b) => b.addEventListener("click", () => {
+    const parent = b.closest("dialog"); if (parent && parent !== sitesDlg) parent.close();
+    openSites();
+  }));
+  $("#sitesClose").addEventListener("click", () => sitesDlg.close());
+  $("#sitesDone").addEventListener("click", () => sitesDlg.close());
+  $("#siteForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = $("#siteErr");
+    let raw = $("#sUrl").value.trim();
+    if (raw && !/^[a-z]+:\/\//i.test(raw)) raw = "https://" + raw; // 'naver.com' 처럼 적어도 됨
+    let u;
+    try { u = new URL(raw); } catch (_) { err.textContent = "주소가 올바르지 않습니다. 예: https://blog.naver.com/내아이디"; $("#sUrl").focus(); return; }
+    if (!/^https?:$/.test(u.protocol)) { err.textContent = "http:// 또는 https:// 로 시작하는 주소만 됩니다."; return; }
+    let roles = [...document.querySelectorAll("#siteRoles input:checked")].map((c) => c.value);
+    if (!roles.length) { err.textContent = "연결할 직원을 한 명 이상 고르세요."; return; }
+    if (roles.includes("*")) roles = ["*"];
+    const item = { id: "site-" + Date.now().toString(36), name: $("#sName").value.trim() || u.hostname, url: u.href, purpose: $("#sPurpose").value, roles };
+    saveSites([...siteList(), item]);
+    $("#siteForm").reset();
+    err.textContent = "";
+    renderSites();
+    $("#siteMsg").textContent = `'${item.name}'을(를) 연결했습니다. 다음 업무 지시서부터 함께 들어갑니다.`;
+  });
+  $("#siteCopy").addEventListener("click", async () => {
+    const text = JSON.stringify(siteList().map(({ name, url, purpose, roles }) => ({ name, url, purpose, roles })), null, 2);
+    try { await navigator.clipboard.writeText(text); $("#siteMsg").textContent = "복사했습니다. office.config.json 의 \"sites\" 에 넣으면 모든 기기에 적용됩니다."; }
+    catch (_) { $("#siteMsg").textContent = "자동 복사가 막혀 있습니다: " + text.replace(/\s+/g, " "); }
+  });
 
   // ------------------------------------------------------------ 직원 명부 (이름·모습 정하기)
   const roster = $("#roster");
@@ -674,6 +767,7 @@
       `사실 자료: ${v("tFacts")}`,
       `금지할 것: ${v("tBan")}`,
       `채널: ${ch.join(", ")}`,
+      ...sitesForOrder(ch),
     ].join("\n");
     $("#taskOut").value = text;
     task.classList.add("done");

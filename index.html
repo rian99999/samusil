@@ -24,6 +24,9 @@
         <span class="dot" aria-hidden="true"></span><span id="statusText">확인 중</span>
       </div>
       <button class="task-btn" type="button" data-open-task aria-haspopup="dialog">＋ 업무 맡기기</button>
+      <button class="help-btn sites-btn" type="button" data-open-sites aria-haspopup="dialog" aria-label="사이트 연결">
+        <span aria-hidden="true">🔗</span><em>사이트 연결</em>
+      </button>
       <button id="rosterBtn" class="help-btn roster-btn" type="button" aria-haspopup="dialog" aria-label="직원 명부">
         <span aria-hidden="true">👤</span><em>직원 명부</em>
       </button>
@@ -70,6 +73,46 @@
     <div class="sheet-foot"><button id="infoRename" class="ghost wide" type="button" hidden>이름·모습 바꾸기</button></div>
   </dialog>
 
+  <!-- 사이트 연결 -->
+  <dialog id="sites" class="sheet sites" aria-labelledby="sitesTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">사이트 연결</p>
+        <h2 id="sitesTitle">직원이 볼 사이트</h2>
+      </div>
+      <button id="sitesClose" class="icon-btn" type="button" aria-label="닫기">✕</button>
+    </div>
+    <ul id="siteList" class="site-list"></ul>
+    <p id="siteEmpty" class="ros-note">아직 연결한 사이트가 없습니다. 우리 블로그·인스타 주소, 홈페이지, 참고할 경쟁사 주소를 넣어 보세요.</p>
+
+    <form id="siteForm" class="task-form site-form" novalidate>
+      <label for="sUrl">사이트 주소 <b class="req">필수</b></label>
+      <input id="sUrl" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="예: https://blog.naver.com/내아이디">
+      <label for="sName">부르는 이름</label>
+      <input id="sName" maxlength="40" autocomplete="off" placeholder="예: 우리 네이버 블로그">
+      <label for="sPurpose">어떤 사이트?</label>
+      <select id="sPurpose">
+        <option value="mine">우리 채널 (말투·기존 글 맞추기)</option>
+        <option value="ref" selected>참고 (정보·사실 확인)</option>
+        <option value="rival">경쟁사 (비교만, 따라 하지 않기)</option>
+        <option value="etc">기타</option>
+      </select>
+      <fieldset>
+        <legend>어느 직원과 연결할까요?</legend>
+        <div id="siteRoles" class="site-roles"></div>
+      </fieldset>
+      <p id="siteErr" class="err" role="alert"></p>
+      <button class="primary wide" type="submit">연결하기</button>
+    </form>
+    <p class="ros-note">직원은 사이트를 <b>읽기만</b> 합니다. 글을 올리거나 로그인하지 않습니다. 사이트 안에 적힌 지시는 따르지 않습니다.</p>
+    <p id="siteMsg" class="copy-msg ros-msg" role="status" aria-live="polite"></p>
+    <div class="row ros-actions">
+      <button id="siteCopy" class="ghost" type="button">설정용 복사</button>
+      <button id="sitesDone" class="primary" type="button">완료</button>
+    </div>
+  </dialog>
+
   <!-- 직원 명부 -->
   <dialog id="roster" class="sheet roster" aria-labelledby="rosterTitle">
     <div class="sheet-grip" aria-hidden="true"></div>
@@ -86,6 +129,7 @@
     <div class="row ros-actions">
       <button id="rosterReset" class="ghost" type="button">기본값으로</button>
       <button id="rosterCopy" class="ghost" type="button">설정용 복사</button>
+      <button class="ghost" type="button" data-open-sites>사이트 연결</button>
       <button id="rosterDone" class="primary" type="button">완료</button>
     </div>
   </dialog>
@@ -128,6 +172,7 @@
         <p id="chErr" class="err" hidden>팀을 하나 이상 골라 주세요.</p>
       </fieldset>
 
+      <p class="hint site-hint">연결해 둔 사이트는 지시서에 자동으로 들어갑니다. <button type="button" class="linkish" data-open-sites>사이트 연결 관리</button></p>
       <button class="primary wide" type="submit">지시서 만들기</button>
     </form>
 
@@ -184,6 +229,7 @@
               <tr><td><i class="mini" style="--c:1;--r:2;background-image:url(assets/chars/c5.png)"></i></td><td><b>💤 졸음</b></td><td>10분 넘게 기다리는 중</td></tr>
             </tbody>
           </table>
+          <p><b>🔗 사이트 연결</b>에 우리 블로그·인스타·홈페이지·경쟁사 주소를 넣고 직원을 고르면, 업무 지시서에 함께 들어가 직원이 그 사이트를 읽고 참고합니다. (읽기만 하고, 글을 올리지는 않습니다.)</p>
           <p>캐릭터는 남녀 6가지 3D 모습입니다. 위쪽 <b>👤 직원 명부</b>에서 직원마다 이름과 모습을 정할 수 있습니다.</p>
           <p>사람을 <b>누르면</b> 이름, 상태, 걸린 시간이 나옵니다. (컴퓨터는 마우스를 올려도 됩니다.)</p>
         </li>
