@@ -413,8 +413,11 @@
     const st = $("#status");
     st.classList.toggle("checking", v);
     const txt = $("#statusText");
-    if (v) txt.textContent = `확인 중 · ${reason}`;
-    else txt.textContent = `실시간 · ${new Date(ms(data.updatedAt)).toLocaleTimeString("ko-KR")} 갱신`;
+    const isDemo = !!(DEMO || (data && data.demo)); // 가짜 자료는 반드시 '시연'으로 표시
+    document.body.classList.toggle("demo", isDemo);
+    const tagDemo = isDemo ? "시연 자료 · " : "";
+    if (v) txt.textContent = `${tagDemo}확인 중 · ${reason}`;
+    else txt.textContent = `${tagDemo}${isDemo ? "" : "실시간 · "}${new Date(ms(data.updatedAt)).toLocaleTimeString("ko-KR")} 갱신`;
   }
 
   function watchdog() {
@@ -424,11 +427,21 @@
     else setStale(false);
   }
 
+  const DEMO = (CFG.src === "demo" || window.OFFICE_DEMO) && window.OfficeSim ? window.OfficeSim.createSim() : null;
+  if (DEMO) document.body.classList.add("demo");
+
   async function poll() {
     try {
-      const r = await fetch(CFG.src + (CFG.src.includes("?") ? "&" : "?") + "_=" + Date.now(), { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const d = await r.json();
+      let d;
+      if (DEMO) {
+        // 시연 모드: 브라우저 안의 가짜 사무실(sim.js). 화면에 '시연 자료'라고 표시한다.
+        DEMO.tick();
+        d = DEMO.snapshot();
+      } else {
+        const r = await fetch(CFG.src + (CFG.src.includes("?") ? "&" : "?") + "_=" + Date.now(), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        d = await r.json();
+      }
       if (ms(d.updatedAt) == null) throw new Error("updatedAt 없음");
       // 같은 updatedAt 이 계속 오면 '갱신 안 됨'으로 본다
       if (d.updatedAt !== lastStamp) {

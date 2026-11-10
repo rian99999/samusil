@@ -1,0 +1,15 @@
+{
+  "floors": [
+    { "id": "design",  "name": "디자인팀" },
+    { "id": "naver",   "name": "네이버 블로그팀" },
+    { "id": "insta",   "name": "인스타그램팀" },
+    { "id": "threads", "name": "스레드팀" }
+  ],
+  "roles": {
+    "designer":            { "floor": "design",  "name": "디자이너" },
+    "naver-blog-marketer": { "floor": "naver",   "name": "네이버 담당" },
+    "instagram-marketer":  { "floor": "insta",   "name": "인스타 담당" },
+    "threads-marketer":    { "floor": "threads", "name": "스레드 담당" },
+    "chief-reviewer":      { "floor": "ceo",     "name": "총괄 실장" }
+  }
+}

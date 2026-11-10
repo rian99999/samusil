@@ -4,6 +4,9 @@
 
 ## 바로 보기 (시연 데이터)
 
+서버 없이: 주소 뒤에 `?src=demo` (브라우저 안 가짜 사무실, 화면에 '시연 자료' 표시)
+
+
 ```bash
 node tools/mock-server.mjs          # http://localhost:8080
 ```
@@ -17,7 +20,39 @@ node tools/mock-server.mjs          # http://localhost:8080
 | `/__mock?spawn=1` | 하위 작업자 1명이 엘리베이터에서 "출근합니다!" |
 | `/__mock?ask=1` | 질문 1개 → 대표실 앞 줄에 섬 |
 
-## 실제 자료 연결
+## 실제 운영 (직원 구조와 연결)
+
+```bash
+node tools/serve.mjs                # http://localhost:8080  (office-state.json 을 1초마다 보여 줌)
+```
+
+직원은 Claude Code 서브에이전트(`.claude/agents/`)이고, 이 저장소에서 Claude Code 를 열고 `/office-run 주제`로 일을 시킨다.
+
+| 층 | 직원 | 하는 일 | 결과 |
+|---|---|---|---|
+| 6F 대표실 | `chief-reviewer` 총괄 실장 | 결과물 검수(사실·규칙·일관성·완성도) 후 보고서 작성 | `reports/<작업>.md` |
+| 5F 스레드팀 | `threads-marketer` | 단독 글 3안, 타래, 댓글 답변안 | `work/<작업>/threads.md` |
+| 4F 인스타그램팀 | `instagram-marketer` | 캡션, 카드뉴스 문구, 릴스 대본, 해시태그 | `work/<작업>/instagram.md` |
+| 3F 네이버 블로그팀 | `naver-blog-marketer` | 키워드, 제목 3안, 본문, 태그 | `work/<작업>/naver.md` |
+| 2F 디자인팀 | `designer` | 색·크기·이미지별 시안 설계서 (Figma 연결 시 시안) | `work/<작업>/design.md` |
+
+진행 순서(`.claude/skills/office-run/SKILL.md`): 일감 정리(brief) → 마케터 3명 동시 작업 → 디자이너 → 총괄 검수 → 사장님 보고.
+배정은 메인 대화가 맡는다(서브에이전트는 다른 서브에이전트를 부를 수 없기 때문).
+**이 구조는 원고·시안까지만 만든다. 네이버·인스타·스레드에 실제로 올리는 기능은 없다.**
+
+사무실 화면 기록은 `tools/office.mjs`가 한다:
+
+```bash
+node tools/office.mjs start naver-1 --role naver-blog-marketer --parent chief-1   # 출근
+node tools/office.mjs state naver-1 blocked                                        # 막힘
+node tools/office.mjs ask naver-1 "가격을 넣을까요?"                                # 대표실 앞 줄
+node tools/office.mjs answer q1 ; node tools/office.mjs end naver-1                # 답변 / 퇴근
+node tools/office.mjs day end                                                      # 소등
+```
+
+층 구성과 역할은 `office.config.json`에서 바꾼다.
+
+## 실제 자료 연결 (다른 프로그램에서)
 
 화면은 `status.json`(또는 `?src=다른주소`)을 1초마다 읽는다. 이 파일을 만드는 쪽은 이 저장소 범위 밖이다. 형식은 아래와 같고, 예시는 `status.example.json`.
 

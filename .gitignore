@@ -1,3 +1,6 @@
 __pycache__/
 .DS_Store
 node_modules/
+office-state.json
+office-state.json.lock/
+*.tmp

@@ -106,7 +106,8 @@ button { font: inherit; }
 }
 .display small { font-size: 16px; opacity: .8; }
 .dir { display: inline-block; width: .9em; font-size: 22px; }
-.buttons { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.buttons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.buttons li { min-width: 0; }
 .buttons button {
   width: 100%; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left;
   background: rgba(255, 255, 255, .06); color: inherit; border: 1px solid rgba(255, 255, 255, .08);
@@ -205,6 +206,10 @@ button { font: inherit; }
 }
 .bubble::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: .5cqw solid transparent; border-top-color: #1f2328; }
 @keyframes pop { from { transform: translateX(-50%) scale(.4); } to { transform: translateX(-50%) scale(1); } }
+
+/* 시연 모드 표시 */
+body.demo .status:not(.checking) { background: var(--c-ask-bg); color: var(--c-ask); }
+body.demo .status:not(.checking) .dot { background: var(--c-ask); animation: none; }
 
 /* ============ 확인 중: 모든 움직임 정지 ============ */
 body.stale .room *, body.stale .room *::after { animation-play-state: paused !important; }
