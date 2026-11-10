@@ -19,19 +19,19 @@
       { id: "threads", name: "스레드팀" },
     ];
     let seq = 0, qseq = 0, paused = false, frozen = null, dayEnded = false;
-    const mk = (floor, name, state, startedAgo, parentId = null, stateAgo = 0) => ({
-      id: "s" + (++seq), name, floor, state, parentId,
+    const mk = (floor, name, state, startedAgo, parentId = null, stateAgo = 0, role = null) => ({
+      id: "s" + (++seq), name, floor, state, parentId, role,
       startedAt: iso(now() - startedAgo * MIN), stateSince: iso(now() - stateAgo * MIN),
     });
     const sessions = [
-      mk("ceo", "총괄 실장", "working", 15),
-      mk("design", "디자이너", "working", 22),
+      mk("ceo", "총괄 실장", "working", 15, null, 0, "chief-reviewer"),
+      mk("design", "디자이너", "working", 22, null, 0, "designer"),
       mk("design", "썸네일 시안", "working", 47, "s2"),        // 40분 초과 → 땀
-      mk("naver", "네이버 담당", "working", 12),
+      mk("naver", "네이버 담당", "working", 12, null, 0, "naver-blog-marketer"),
       mk("naver", "키워드 조사", "reporting", 9, "s4"),         // 만세 + 별
-      mk("insta", "인스타 담당", "blocked", 30, null, 7),       // 막힘
+      mk("insta", "인스타 담당", "blocked", 30, null, 7, "instagram-marketer"),       // 막힘
       mk("insta", "릴스 대본", "idle", 20, "s6", 4),            // 커피
-      mk("threads", "스레드 담당", "idle", 40, null, 14),       // 졸음
+      mk("threads", "스레드 담당", "idle", 40, null, 14, "threads-marketer"),       // 졸음
     ];
     const questions = [
       { id: "q" + (++qseq), sessionId: "s6", from: "인스타 담당", text: "브랜드 해시태그를 새로 만들까요, 기존 것을 쓸까요?", askedAt: iso(now() - 12 * MIN) },

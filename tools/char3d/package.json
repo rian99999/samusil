@@ -1,0 +1,6 @@
+{
+  "name": "office-char3d",
+  "private": true,
+  "description": "3D 캐릭터를 그려 스프라이트 이미지로 굽는 도구 (화면 실행에는 필요 없음)",
+  "devDependencies": { "three": "0.160.0" }
+}

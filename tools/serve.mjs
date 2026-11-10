@@ -15,13 +15,14 @@ const i = process.argv.indexOf("--port");
 const PORT = i > 0 ? +process.argv[i + 1] : 8080;
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml" };
-const PUBLIC = new Set(["index.html", "app.js", "style.css", "sim.js", "assets/office.png", "assets/sprite.png", "assets/layout.json"]);
+const PUBLIC = new Set(["index.html", "app.js", "style.css", "sim.js", "assets/office.png", "assets/layout.json",
+  ...[0, 1, 2, 3, 4, 5].map((n) => `assets/chars/c${n}.png`)]);
 
 function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
   try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw e; }
-  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, sessions: s.sessions || [], questions: s.questions || [] };
+  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, roles: cfg.roles || {}, sessions: s.sessions || [], questions: s.questions || [] };
 }
 
 http.createServer((req, res) => {

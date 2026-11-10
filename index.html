@@ -24,6 +24,9 @@
         <span class="dot" aria-hidden="true"></span><span id="statusText">확인 중</span>
       </div>
       <button class="task-btn" type="button" data-open-task aria-haspopup="dialog">＋ 업무 맡기기</button>
+      <button id="rosterBtn" class="help-btn roster-btn" type="button" aria-haspopup="dialog" aria-label="직원 명부">
+        <span aria-hidden="true">👤</span><em>직원 명부</em>
+      </button>
       <button id="helpBtn" class="help-btn" type="button" aria-haspopup="dialog" aria-label="사용설명서">
         <span aria-hidden="true">?</span><em>사용설명서</em>
       </button>
@@ -45,12 +48,12 @@
   </main>
 
   <footer class="legend" aria-label="그림 설명">
-    <span><i class="mini" style="--c:0;--r:1"></i>작업 중</span>
-    <span><i class="mini" style="--c:0;--r:2"></i>💧 40분 넘음 · 막힘</span>
-    <span><i class="mini" style="--c:2;--r:1"></i>⭐ 결과 보고</span>
-    <span><i class="mini" style="--c:0;--r:2"></i>☕ 대기</span>
-    <span><i class="mini" style="--c:1;--r:2"></i>💤 오래 대기</span>
-    <span><i class="mini" style="--c:2;--r:2"></i>❓ 질문 줄</span>
+    <span><i class="mini" style="--c:0;--r:1;background-image:url(assets/chars/c0.png)"></i>작업 중</span>
+    <span><i class="mini" style="--c:0;--r:2;background-image:url(assets/chars/c1.png)"></i>💧 40분 넘음 · 막힘</span>
+    <span><i class="mini" style="--c:2;--r:1;background-image:url(assets/chars/c2.png)"></i>⭐ 결과 보고</span>
+    <span><i class="mini" style="--c:0;--r:2;background-image:url(assets/chars/c3.png)"></i>☕ 대기</span>
+    <span><i class="mini" style="--c:1;--r:2;background-image:url(assets/chars/c4.png)"></i>💤 오래 대기</span>
+    <span><i class="mini" style="--c:2;--r:2;background-image:url(assets/chars/c5.png)"></i>❓ 질문 줄</span>
   </footer>
 
   <!-- 휴대폰: 엄지로 누르는 업무 맡기기 버튼 -->
@@ -64,6 +67,27 @@
       <button id="infoClose" class="icon-btn" type="button" aria-label="닫기">✕</button>
     </div>
     <ul id="infoList" class="info-list"></ul>
+    <div class="sheet-foot"><button id="infoRename" class="ghost wide" type="button" hidden>이름·모습 바꾸기</button></div>
+  </dialog>
+
+  <!-- 직원 명부 -->
+  <dialog id="roster" class="sheet roster" aria-labelledby="rosterTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">직원 명부</p>
+        <h2 id="rosterTitle">이름과 모습 정하기</h2>
+      </div>
+      <button id="rosterClose" class="icon-btn" type="button" aria-label="닫기">✕</button>
+    </div>
+    <ul id="rosterList" class="ros-list"></ul>
+    <p class="ros-note">정한 이름·모습은 <b>이 기기의 브라우저</b>에 저장됩니다. 다른 기기에도 똑같이 쓰려면 <b>설정용 복사</b> 후 <code>office.config.json</code>에 넣으세요. 하위 작업자는 하는 일 이름으로 나오고 모습은 자동으로 섞입니다.</p>
+    <p id="rosterMsg" class="copy-msg ros-msg" role="status" aria-live="polite"></p>
+    <div class="row ros-actions">
+      <button id="rosterReset" class="ghost" type="button">기본값으로</button>
+      <button id="rosterCopy" class="ghost" type="button">설정용 복사</button>
+      <button id="rosterDone" class="primary" type="button">완료</button>
+    </div>
   </dialog>
 
   <!-- 업무 맡기기 -->
@@ -152,14 +176,15 @@
           <h3>몸짓 읽는 법</h3>
           <table class="poses">
             <tbody>
-              <tr><td><i class="mini" style="--c:0;--r:1"></i></td><td><b>타자 치기</b></td><td>열심히 일하는 중</td></tr>
-              <tr><td><i class="mini" style="--c:0;--r:1"></i></td><td><b>타자 + 💧</b></td><td>시작한 지 40분이 넘었어요</td></tr>
-              <tr><td><i class="mini" style="--c:0;--r:2"></i></td><td><b>서서 💧💧</b></td><td>막혀서 진행이 안 돼요</td></tr>
-              <tr><td><i class="mini" style="--c:2;--r:1"></i></td><td><b>만세 + ⭐</b></td><td>결과를 보고하는 중</td></tr>
-              <tr><td><i class="mini" style="--c:0;--r:2"></i></td><td><b>☕ 커피</b></td><td>할 일 없이 기다리는 중</td></tr>
-              <tr><td><i class="mini" style="--c:1;--r:2"></i></td><td><b>💤 졸음</b></td><td>10분 넘게 기다리는 중</td></tr>
+              <tr><td><i class="mini" style="--c:0;--r:1;background-image:url(assets/chars/c0.png)"></i></td><td><b>타자 치기</b></td><td>열심히 일하는 중</td></tr>
+              <tr><td><i class="mini" style="--c:0;--r:1;background-image:url(assets/chars/c1.png)"></i></td><td><b>타자 + 💧</b></td><td>시작한 지 40분이 넘었어요</td></tr>
+              <tr><td><i class="mini" style="--c:0;--r:2;background-image:url(assets/chars/c2.png)"></i></td><td><b>서서 💧💧</b></td><td>막혀서 진행이 안 돼요</td></tr>
+              <tr><td><i class="mini" style="--c:2;--r:1;background-image:url(assets/chars/c3.png)"></i></td><td><b>만세 + ⭐</b></td><td>결과를 보고하는 중</td></tr>
+              <tr><td><i class="mini" style="--c:0;--r:2;background-image:url(assets/chars/c4.png)"></i></td><td><b>☕ 커피</b></td><td>할 일 없이 기다리는 중</td></tr>
+              <tr><td><i class="mini" style="--c:1;--r:2;background-image:url(assets/chars/c5.png)"></i></td><td><b>💤 졸음</b></td><td>10분 넘게 기다리는 중</td></tr>
             </tbody>
           </table>
+          <p>캐릭터는 남녀 6가지 3D 모습입니다. 위쪽 <b>👤 직원 명부</b>에서 직원마다 이름과 모습을 정할 수 있습니다.</p>
           <p>사람을 <b>누르면</b> 이름, 상태, 걸린 시간이 나옵니다. (컴퓨터는 마우스를 올려도 됩니다.)</p>
         </li>
         <li>

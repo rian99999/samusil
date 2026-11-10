@@ -1,0 +1,214 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>캐릭터 굽기</title>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js" } }</script>
+<body style="margin:0;background:#888">
+<script type="module">
+import * as THREE from "three";
+
+// ---------------------------------------------------------------- 칸 크기 / 칸 순서
+// 4열 x 3행 – app.js 의 FRAMES 와 같은 순서여야 한다.
+const FW = 192, FH = 240;
+const SHEET = [
+  [["walk", 0], ["walk", 1], ["walk", 2], ["walk", 3]],
+  [["type", 0], ["type", 1], ["cheer", 0], ["cheer", 1]],
+  [["stand", 0], ["doze", 0], ["squat", 0], ["squat", 1]],
+];
+
+// ---------------------------------------------------------------- 무대
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(FW, FH);
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = false;
+document.body.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+// 사무실 그림과 같은 방향에서 내려다보는 직교 카메라 (원근 없음)
+const H = 3.3, W = H * FW / FH;
+const camera = new THREE.OrthographicCamera(-W / 2, W / 2, H - 0.12, -0.12, 0.1, 50);
+const camDir = new THREE.Vector3(Math.sin(0.42), 0.5, Math.cos(0.42)).normalize();
+camera.position.copy(camDir.clone().multiplyScalar(12));
+camera.up.set(0, 1, 0);
+// 발이 칸 아래쪽, 머리가 위쪽에 오도록 카메라를 위로 맞춤
+camera.lookAt(0, 0, 0);
+camera.position.y += 0; camera.updateProjectionMatrix();
+
+scene.add(new THREE.HemisphereLight(0xfff6ea, 0x8a7a6a, 1.25));
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(3, 6, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xbfd8ff, 1.1); rim.position.set(-4, 3, -4); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffe2c8, 0.5); fill.position.set(-3, 1, 4); scene.add(fill);
+
+const mat = (c, rough = 0.6, metal = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal });
+const mesh = (g, m) => { const x = new THREE.Mesh(g, m); return x; };
+const caps = (r, l) => new THREE.CapsuleGeometry(r, l, 8, 16);
+const sph = (r, ws = 32, hs = 24) => new THREE.SphereGeometry(r, ws, hs);
+
+// ---------------------------------------------------------------- 캐릭터 만들기
+function buildCharacter(a) {
+  const skin = mat(a.skin, 0.55), hair = mat(a.hair, 0.5), top = mat(a.top, 0.7), bottom = mat(a.bottom, 0.75);
+  const shoe = mat(0x2a2a30, 0.5), dark = mat(0x1d1d22, 0.3), white = mat(0xffffff, 0.3);
+  const root = new THREE.Group();
+  const hips = new THREE.Group(); hips.position.y = 0.95; root.add(hips);
+
+  // 몸통
+  const torso = new THREE.Group(); hips.add(torso);
+  const body = mesh(caps(0.33, 0.42), top); body.position.y = 0.38; body.scale.set(1, 1, 0.78); torso.add(body);
+  if (a.collar) { const c = mesh(new THREE.TorusGeometry(0.17, 0.05, 10, 24), mat(a.collar, 0.6)); c.rotation.x = Math.PI / 2; c.position.y = 0.78; torso.add(c); }
+  if (a.skirt) {
+    const sk = mesh(new THREE.CylinderGeometry(0.3, 0.46, 0.42, 28, 1, true), bottom);
+    sk.material.side = THREE.DoubleSide; sk.position.y = -0.02; hips.add(sk);
+  } else {
+    const pelvis = mesh(caps(0.3, 0.06), bottom); pelvis.position.y = 0.02; pelvis.scale.set(1, 0.8, 0.78); hips.add(pelvis);
+  }
+
+  // 머리
+  const neck = new THREE.Group(); neck.position.y = 0.82; torso.add(neck);
+  const head = new THREE.Group(); head.position.y = 0.5; neck.add(head);
+  head.add(mesh(sph(0.5), skin));
+  const eyes = [];
+  for (const sx of [-0.17, 0.17]) {
+    const e = mesh(sph(0.085, 16, 12), dark); e.position.set(sx, -0.06, 0.45); e.scale.set(1, 1.25, 0.6); head.add(e); eyes.push(e);
+    const hl = mesh(sph(0.026, 8, 6), white); hl.position.set(sx + 0.025, -0.01, 0.52); head.add(hl); eyes.push(hl);
+    const bl = mesh(sph(0.07, 16, 10), mat(0xf29a8e, 0.8)); bl.position.set(sx * 1.55, -0.2, 0.4); bl.scale.set(1, 0.55, 0.3); head.add(bl);
+  }
+  const mouth = mesh(new THREE.TorusGeometry(0.06, 0.018, 8, 16, Math.PI), mat(0x7a2e2e, 0.5));
+  mouth.position.set(0, -0.23, 0.45); mouth.rotation.z = Math.PI; head.add(mouth);
+  const mouthOpen = mesh(sph(0.07, 16, 12), mat(0x8c2f35, 0.5)); mouthOpen.position.set(0, -0.25, 0.43); mouthOpen.scale.set(1, 0.8, 0.4); mouthOpen.visible = false; head.add(mouthOpen);
+  if (a.glasses) {
+    for (const sx of [-0.18, 0.18]) { const g = mesh(new THREE.TorusGeometry(0.11, 0.018, 8, 24), dark); g.position.set(sx, -0.06, 0.5); head.add(g); }
+    const br = mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), dark); br.position.set(0, -0.04, 0.52); head.add(br);
+  }
+
+  // 머리카락
+  // 앞은 이마까지, 뒤는 목덜미까지 덮도록 뒤로 기울인 머리 덮개
+  const cap = mesh(new THREE.SphereGeometry(0.535, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.44), hair);
+  cap.rotation.x = -0.32; cap.position.set(0, 0.02, -0.01); head.add(cap);
+  const backCap = mesh(new THREE.SphereGeometry(0.53, 32, 24, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.3, Math.PI * 0.4), hair);
+  head.add(backCap); backCap.rotation.y = Math.PI;
+  if (a.style === "long") {
+    const back = mesh(caps(0.42, 0.55), hair); back.position.set(0, -0.32, -0.2); back.scale.set(1.15, 1, 0.6); head.add(back);
+    for (const sx of [-0.47, 0.47]) { const side = mesh(caps(0.13, 0.5), hair); side.position.set(sx, -0.3, -0.03); head.add(side); }
+  } else if (a.style === "bob") {
+    const back = mesh(caps(0.46, 0.1), hair); back.position.set(0, -0.12, -0.16); back.scale.set(1.12, 1, 0.75); head.add(back);
+    for (const sx of [-0.45, 0.45]) { const side = mesh(caps(0.15, 0.18), hair); side.position.set(sx, -0.14, 0.0); head.add(side); }
+  } else if (a.style === "pony") {
+    const tail = mesh(caps(0.14, 0.45), hair); tail.position.set(0, 0.05, -0.62); tail.rotation.x = 0.5; head.add(tail);
+    const tie = mesh(new THREE.TorusGeometry(0.09, 0.03, 8, 16), mat(a.top, 0.5)); tie.position.set(0, 0.25, -0.5); tie.rotation.x = 1.2; head.add(tie);
+  } else if (a.style === "curly") {
+    for (let i = 0; i < 14; i++) {
+      const t = (i / 14) * Math.PI * 2;
+      const c = mesh(sph(0.15, 12, 10), hair);
+      c.position.set(Math.cos(t) * 0.42, 0.28 + Math.sin(i * 1.7) * 0.06, Math.sin(t) * 0.38 - 0.05);
+      head.add(c);
+    }
+  } else { // short
+    const top2 = mesh(sph(0.2, 16, 12), hair); top2.position.set(0.12, 0.45, 0.12); top2.scale.set(1.3, 0.6, 1); head.add(top2);
+  }
+
+  // 팔 (어깨-팔꿈치 두 마디)
+  const arms = [];
+  for (const side of [-1, 1]) {
+    const sh = new THREE.Group(); sh.position.set(side * 0.38, 0.62, 0); torso.add(sh);
+    const upper = mesh(caps(0.1, 0.26), top); upper.position.y = -0.18; sh.add(upper);
+    const el = new THREE.Group(); el.position.y = -0.36; sh.add(el);
+    const fore = mesh(caps(0.09, 0.22), top); fore.position.y = -0.15; el.add(fore);
+    const hand = mesh(sph(0.1, 16, 12), skin); hand.position.y = -0.33; el.add(hand);
+    arms.push({ sh, el, side });
+  }
+  // 다리 (엉덩이-무릎 두 마디)
+  const legs = [];
+  for (const side of [-1, 1]) {
+    const hp = new THREE.Group(); hp.position.set(side * 0.15, 0, 0); hips.add(hp);
+    const thigh = mesh(caps(0.12, 0.26), a.skirt ? skin : bottom); thigh.position.y = -0.2; hp.add(thigh);
+    const kn = new THREE.Group(); kn.position.y = -0.42; hp.add(kn);
+    const shin = mesh(caps(0.11, 0.26), a.skirt ? skin : bottom); shin.position.y = -0.18; kn.add(shin);
+    const foot = mesh(new THREE.BoxGeometry(0.22, 0.12, 0.32), shoe); foot.position.set(0, -0.44, 0.06);
+    foot.geometry.translate(0, 0, 0); kn.add(foot);
+    legs.push({ hp, kn, side });
+  }
+  // 노트북 (타자 자세에서만)
+  const laptop = new THREE.Group();
+  const base = mesh(new THREE.BoxGeometry(0.62, 0.04, 0.42), mat(0xb9bec8, 0.35, 0.4)); laptop.add(base);
+  const lid = new THREE.Group(); lid.position.set(0, 0.02, -0.2); laptop.add(lid);
+  const lidM = mesh(new THREE.BoxGeometry(0.62, 0.42, 0.03), mat(0x8e96a3, 0.35, 0.4)); lidM.position.y = 0.21; lid.add(lidM);
+  const logo = mesh(sph(0.04, 12, 8), mat(0xeef2f7, 0.3)); logo.position.set(0, 0.22, -0.02); logo.scale.z = 0.3; lid.add(logo);
+  lid.rotation.x = -0.35;
+  laptop.position.set(0, 0.12, 0.5); laptop.visible = false; hips.add(laptop);
+
+  return { root, hips, torso, neck, head, arms, legs, laptop, eyes, mouth, mouthOpen };
+}
+
+// ---------------------------------------------------------------- 자세
+function pose(c, name, k) {
+  const reset = () => {
+    c.root.position.set(0, 0, 0); c.hips.position.y = 0.95; c.hips.rotation.set(0, 0, 0);
+    c.torso.rotation.set(0, 0, 0); c.neck.rotation.set(0, 0, 0); c.head.rotation.set(0, 0, 0);
+    for (const a of c.arms) { a.sh.rotation.set(0, 0, a.side * 0.12); a.el.rotation.set(0, 0, 0); }
+    for (const l of c.legs) { l.hp.rotation.set(0, 0, 0); l.kn.rotation.set(0, 0, 0); }
+    c.laptop.visible = false; c.mouth.visible = true; c.mouthOpen.visible = false;
+    for (const e of c.eyes) e.scale.y = e.userData.sy ?? (e.userData.sy = e.scale.y);
+  };
+  reset();
+  const [L, R] = c.legs, [AL, AR] = c.arms;
+  if (name === "walk") {
+    const s = [0.55, 0, -0.55, 0][k];
+    L.hp.rotation.x = s; R.hp.rotation.x = -s;
+    L.kn.rotation.x = s < 0 ? 0.5 : 0.1; R.kn.rotation.x = s > 0 ? 0.5 : 0.1;
+    AL.sh.rotation.x = -s * 0.9; AR.sh.rotation.x = s * 0.9;
+    AL.el.rotation.x = -0.3; AR.el.rotation.x = -0.3;
+    c.root.position.y = [0, 0.05, 0, 0.05][k];
+  } else if (name === "type") {
+    // 의자 없이 앉은 자세 + 무릎 위 노트북
+    c.hips.position.y = 0.55;
+    for (const l of c.legs) { l.hp.rotation.x = -1.45; l.kn.rotation.x = 1.45; }
+    c.laptop.visible = true;
+    const t = k ? 0.12 : -0.05;
+    AL.sh.rotation.x = -0.75 - t; AR.sh.rotation.x = -0.75 + t;
+    AL.el.rotation.x = -0.9; AR.el.rotation.x = -0.9;
+    AL.sh.rotation.z = -0.25; AR.sh.rotation.z = 0.25;
+    c.neck.rotation.x = 0.18; c.torso.rotation.x = 0.06;
+  } else if (name === "cheer") {
+    AL.sh.rotation.z = -2.6; AR.sh.rotation.z = 2.6;
+    AL.el.rotation.z = -0.2; AR.el.rotation.z = 0.2;
+    c.mouth.visible = false; c.mouthOpen.visible = true;
+    c.root.position.y = k ? 0.16 : 0;
+    if (k) { L.kn.rotation.x = 0.35; R.kn.rotation.x = 0.35; L.hp.rotation.x = -0.15; R.hp.rotation.x = -0.15; }
+  } else if (name === "stand") {
+    // 오른손은 가슴 앞 (커피잔 자리)
+    AR.sh.rotation.x = -0.35; AR.el.rotation.x = -1.7; AR.sh.rotation.z = 0.25;
+  } else if (name === "doze") {
+    c.neck.rotation.z = 0.32; c.neck.rotation.x = 0.25;
+    for (const e of c.eyes) e.scale.y = 0.18;
+    c.torso.rotation.x = 0.08;
+  } else if (name === "squat") {
+    c.hips.position.y = 0.42 + (k ? 0.015 : 0);
+    for (const l of c.legs) { l.hp.rotation.x = -2.0; l.kn.rotation.x = 2.35; l.hp.rotation.z = l.side * 0.25; }
+    c.torso.rotation.x = 0.35 + (k ? 0.04 : 0); c.neck.rotation.x = -0.3;
+    AL.sh.rotation.x = -1.2; AR.sh.rotation.x = -1.2; AL.el.rotation.x = -0.6; AR.el.rotation.x = -0.6;
+    AL.sh.rotation.z = 0.1; AR.sh.rotation.z = -0.1;
+  }
+}
+
+// ---------------------------------------------------------------- 굽기
+window.renderSheet = (avatar) => {
+  const c = buildCharacter(avatar);
+  c.root.rotation.y = 0; // 카메라 쪽을 봄
+  scene.add(c.root);
+  const sheet = document.createElement("canvas");
+  sheet.width = FW * 4; sheet.height = FH * 3;
+  const g = sheet.getContext("2d");
+  SHEET.forEach((row, r) => row.forEach(([name, k], col) => {
+    pose(c, name, k);
+    renderer.render(scene, camera);
+    g.drawImage(renderer.domElement, col * FW, r * FH);
+  }));
+  scene.remove(c.root);
+  return sheet.toDataURL("image/png");
+};
+window.ready = true;
+</script>
+</body>

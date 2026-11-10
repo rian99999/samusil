@@ -174,8 +174,8 @@ button { font: inherit; }
 }
 
 /* ============ 사람 ============ */
-.person { position: absolute; width: 4.6cqw; aspect-ratio: 96 / 120; transform: translate(-50%, -97%); }
-.sprite { position: absolute; inset: 0; background: url("assets/sprite.png") 0 0 / 400% 300% no-repeat; filter: drop-shadow(0 .15cqw .1cqw rgba(0, 0, 0, .18)); }
+.person { position: absolute; width: 6.2cqw; aspect-ratio: 96 / 120; transform: translate(-50%, -97%); }
+.sprite { position: absolute; inset: 0; background: url("assets/chars/c0.png") 0 0 / 400% 300% no-repeat; filter: drop-shadow(0 .15cqw .1cqw rgba(0, 0, 0, .18)); }
 .person.leaving { opacity: .92; }
 .person.gone { opacity: 0; transition: opacity .5s; }
 .tag {
@@ -237,7 +237,7 @@ body.stale .checking-mask { display: flex; }
 }
 .mini {
   display: inline-block; flex: none; width: 24px; height: 30px; border-radius: 6px;
-  background: var(--surface-2) url("assets/sprite.png") no-repeat;
+  background: var(--surface-2) url("assets/chars/c0.png") no-repeat;
   background-size: 400% 300%;
   background-position: calc(var(--c) / 3 * 100%) calc(var(--r) / 2 * 100%);
 }
@@ -359,6 +359,32 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 6px; border-r
 .ghost { cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; font-weight: 700; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
+/* ============ 직원 명부 ============ */
+.roster-btn span { background: var(--c-ask); font-size: 13px; }
+.sheet-foot { padding: 0 20px 20px; }
+.ghost.wide { width: 100%; min-height: 46px; font-size: 15px; }
+.ros-list { list-style: none; margin: 0; padding: 8px 20px; display: grid; gap: 10px; }
+.ros-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ros-face { width: 56px !important; height: 70px !important; flex: none; border-radius: 12px; }
+.ros-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.ros-main label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.ros-main input {
+  width: 100%; font: inherit; font-size: 16px; font-weight: 700; padding: 9px 12px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+}
+.ros-main input:focus { outline: 2px solid var(--brand); border-color: transparent; }
+.ros-avatars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.ros-pick {
+  cursor: pointer; padding: 3px; border-radius: 10px; border: 2px solid transparent; background: var(--surface-2);
+  min-height: 44px; display: grid; place-items: center;
+}
+.ros-pick .mini { width: 100%; max-width: 34px; height: auto; aspect-ratio: 96 / 120; background-color: transparent; }
+.ros-pick[aria-checked="true"] { border-color: var(--brand); background: var(--c-work-bg); }
+.ros-note { margin: 4px 20px 0; font-size: 12.5px; color: var(--muted); }
+.ros-msg { margin: 6px 20px 0; }
+.ros-actions { padding: 12px 20px 20px; flex-wrap: wrap; }
+.ros-actions > * { min-height: 46px; font-size: 15px; }
+
 /* ============ 좁은 화면 (휴대폰) ============ */
 @media (max-width: 760px) {
   .top { padding: 12px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); gap: 8px; }
@@ -421,7 +447,8 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 6px; border-r
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .sheet-grip { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 8px auto 0; }
-  .help-head, .help-body, .help-foot, .sheet-head, .task-form, .task-result, .info-list { padding-left: 16px; padding-right: 16px; }
+  .help-head, .help-body, .help-foot, .sheet-head, .task-form, .task-result, .info-list, .ros-list, .ros-actions, .sheet-foot { padding-left: 16px; padding-right: 16px; }
+  .ros-note, .ros-msg { margin-left: 16px; margin-right: 16px; }
   .help-foot .primary { width: 100%; min-height: 48px; }
   .icon-btn { width: 44px; height: 44px; }
   .task-form fieldset { grid-template-columns: 1fr 1fr; }

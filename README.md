@@ -110,8 +110,16 @@ https://www.figma.com/design/gpxpF7f9FKGPE3HEPLpRss
 주소 뒤에 붙여 기준값을 바꿀 수 있다: `?stale=5000&long=40&doze=10&qsweat=3&qsquat=10&poll=1000`.
 조작: 왼쪽 층 버튼, 키보드 ↑/↓. 사람에 마우스를 올리면 상세 내용이 보인다.
 
+## 캐릭터와 직원 명부
+
+- 캐릭터는 3D 모델(three.js)을 그려 칸 그림으로 구운 것: `assets/chars/c0~c5.png` (남 3, 여 3).
+  모습을 바꾸려면 `tools/char3d/render.mjs`의 `AVATARS`를 고치고 `cd tools/char3d && npm install && node render.mjs`.
+- 화면 위 **👤 직원 명부**에서 직책마다 이름과 모습을 정한다. 이 브라우저에 저장되며, **설정용 복사** 내용을
+  `office.config.json`의 `roles`(person, avatar)에 넣으면 모든 기기에 같은 이름·모습이 나온다.
+- 하위 작업자는 하는 일 이름으로 나오고 모습은 id 로 섞인다.
+
 ## 그림
 
-- `assets/office.png` 등각 사무실 1장, `assets/sprite.png` 캐릭터 4×3, `assets/layout.json` 자리·엘리베이터·줄 좌표.
+- `assets/office.png` 등각 사무실 1장, `assets/chars/c*.png` 3D 캐릭터 4×3 (예전 2D `assets/sprite.png`는 쓰지 않음), `assets/layout.json` 자리·엘리베이터·줄 좌표.
 - `python3 tools/make_assets.py` 로 다시 만든다(Pillow 필요). 직접 그린 그림으로 바꿀 때는 같은 크기·좌표계를 지키거나 `layout.json` 을 맞춰 고친다.
 - 스프라이트 칸 순서: 1행 걷기×4 / 2행 타자×2, 만세×2 / 3행 서기, 졸기, 쪼그림×2.

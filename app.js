@@ -30,6 +30,35 @@
     squat: { f: [10, 11], fps: 1.2 },
   };
   const COLORS = ["#4a7bd0", "#d9534f", "#3aa76d", "#e0a526", "#8e5bd0", "#2aa3b8", "#d0679b", "#6d7a8a"];
+  // 3D 캐릭터 6가지 (assets/chars/c0~c5.png, tools/char3d/render.mjs 의 AVATARS 와 같은 순서)
+  const AVATARS = ["남 · 짧은 머리", "여 · 긴 머리", "남 · 안경", "여 · 단발", "남 · 곱슬머리", "여 · 묶은 머리"];
+  const charUrl = (n) => `assets/chars/c${n}.png`;
+  // 직책별 기본 이름·모습. 자료(status.json)의 roles 가 있으면 그것이 먼저, 이 브라우저에서 고친 값이 가장 먼저.
+  const DEFAULT_ROLES = {
+    "chief-reviewer": { name: "총괄 실장", person: "서윤", avatar: 1 },
+    "designer": { name: "디자이너", person: "도윤", avatar: 2 },
+    "naver-blog-marketer": { name: "네이버 담당", person: "지우", avatar: 3 },
+    "instagram-marketer": { name: "인스타 담당", person: "하린", avatar: 5 },
+    "threads-marketer": { name: "스레드 담당", person: "민준", avatar: 4 },
+  };
+  const ROSTER_KEY = "office-roster";
+  let rosterLocal = {};
+  try { rosterLocal = JSON.parse(localStorage.getItem(ROSTER_KEY) || "{}") || {}; } catch (_) {}
+  const clampAvatar = (n) => (Number.isInteger(+n) && +n >= 0 && +n < AVATARS.length ? +n : 0);
+  function roleKeys() { return [...new Set([...Object.keys(DEFAULT_ROLES), ...Object.keys((data && data.roles) || {})])]; }
+  function roleInfo(role) {
+    const base = (data && data.roles && data.roles[role]) || DEFAULT_ROLES[role];
+    if (!base) return null;
+    const loc = rosterLocal[role] || {};
+    return { role, title: base.name || role, person: (loc.person ?? base.person ?? "").trim(), avatar: clampAvatar(loc.avatar ?? base.avatar ?? 0) };
+  }
+  // 세션 → 화면에 보일 이름·모습
+  function who(sess, fallbackKey) {
+    const r = sess && sess.role ? roleInfo(sess.role) : null;
+    if (r) return { label: r.person || r.title, title: r.title, avatar: r.avatar, role: r.role };
+    const k = sess ? sess.id : fallbackKey;
+    return { label: sess ? (sess.name || sess.id) : "질문", title: null, avatar: Math.abs(hash(k)) % AVATARS.length, role: null };
+  }
 
   const $ = (s) => document.querySelector(s);
   const el = (tag, cls, text) => {
@@ -195,6 +224,11 @@
   });
 
   // ------------------------------------------------------------ 사람(Actor)
+  function setAvatar(a, n) {
+    if (a.avatar === n) return;
+    a.avatar = n;
+    a.sprite.style.backgroundImage = `url("${charUrl(n)}")`;
+  }
   function makeActor(floor, key, kind, label, color) {
     const root = el("div", "person");
     const sprite = el("div", "sprite");
@@ -319,7 +353,9 @@
       // 새로 온 사람 / 남아 있는 사람
       for (const [key, w] of want) {
         let a = f.actors.get(key);
-        const label = w.kind === "queue" ? (w.q.from || (w.from && w.from.name) || "질문") : (w.s.name || w.s.id);
+        const sess = w.kind === "queue" ? w.from : w.s;
+        const info = sess ? who(sess) : { label: w.q.from || "질문", title: null, avatar: Math.abs(hash(w.q.sessionId ?? w.q.id)) % AVATARS.length, role: null };
+        const label = info.label;
         const colorKey = w.kind === "queue" ? (w.q.sessionId ?? w.q.id) : (w.s.parentId ?? w.s.id);
         if (!a) {
           a = makeActor(f, key, w.kind, label, COLORS[Math.abs(hash(colorKey)) % COLORS.length]);
@@ -342,11 +378,14 @@
           a.path[a.path.length - 1] = w.target;
         }
         a.tag.textContent = label;
+        setAvatar(a, info.avatar);
+        if (info.role) a.root.dataset.role = info.role; else delete a.root.dataset.role;
         a.look = w.look;
         const extra = w.kind === "queue"
           ? `\n질문: ${w.q.text || "(내용 없음)"}`
           : `\n층: ${w.s.floor ?? "-"}${w.s.parentId ? `\n상위 작업: ${w.s.parentId}` : ""}`;
-        a.root.title = `${label}\n${w.look.text}${extra}`;
+        const roleLine = info.title && info.title !== label ? `\n역할: ${info.title}` : "";
+        a.root.title = `${label}${roleLine}\n${w.look.text}${extra}`;
         a.root.setAttribute("aria-label", `${label}, ${w.look.text}`);
       }
       // 사라진 사람 → 퇴근
@@ -513,9 +552,82 @@
     const list = $("#infoList");
     list.textContent = "";
     for (const ln of lines.slice(1)) list.append(el("li", null, ln));
+    const btn = $("#infoRename");
+    btn.hidden = !root.dataset.role;
+    btn.dataset.role = root.dataset.role || "";
     const d = $("#info");
     if (!d.open) d.showModal();
   }
+  $("#infoRename").addEventListener("click", (e) => { const r = e.currentTarget.dataset.role; $("#info").close(); openRoster(r); });
+
+  // ------------------------------------------------------------ 직원 명부 (이름·모습 정하기)
+  const roster = $("#roster");
+  function saveRoster() {
+    try { localStorage.setItem(ROSTER_KEY, JSON.stringify(rosterLocal)); } catch (_) {}
+    if (data) apply(data); // 화면의 이름표·모습을 바로 바꾼다
+  }
+  function face(n, cls) {
+    const i = el("i", "mini " + (cls || ""));
+    i.style.setProperty("--c", 0); i.style.setProperty("--r", 2);
+    i.style.backgroundImage = `url("${charUrl(n)}")`;
+    i.setAttribute("aria-hidden", "true");
+    return i;
+  }
+  function renderRoster(focusRole) {
+    const list = $("#rosterList");
+    list.textContent = "";
+    for (const role of roleKeys()) {
+      const r = roleInfo(role);
+      const li = el("li", "ros-row");
+      const big = face(r.avatar, "ros-face");
+      const main = el("div", "ros-main");
+      const lab = el("label", null, r.title);
+      lab.htmlFor = "rn-" + role;
+      const inp = el("input");
+      inp.id = "rn-" + role; inp.value = r.person; inp.maxLength = 12; inp.placeholder = r.title; inp.autocomplete = "off";
+      inp.addEventListener("input", () => { (rosterLocal[role] ||= {}).person = inp.value; saveRoster(); });
+      const group = el("div", "ros-avatars");
+      group.setAttribute("role", "radiogroup");
+      group.setAttribute("aria-label", r.title + " 모습");
+      AVATARS.forEach((lbl, n) => {
+        const b = el("button", "ros-pick");
+        b.type = "button";
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", String(n === r.avatar));
+        b.setAttribute("aria-label", lbl);
+        b.title = lbl;
+        b.append(face(n));
+        b.addEventListener("click", () => {
+          (rosterLocal[role] ||= {}).avatar = n;
+          group.querySelectorAll(".ros-pick").forEach((x, k) => x.setAttribute("aria-checked", String(k === n)));
+          big.style.backgroundImage = `url("${charUrl(n)}")`;
+          saveRoster();
+        });
+        group.append(b);
+      });
+      main.append(lab, inp, group);
+      li.append(big, main);
+      list.append(li);
+      if (role === focusRole) requestAnimationFrame(() => { inp.focus(); inp.select(); });
+    }
+  }
+  function openRoster(focusRole) {
+    renderRoster(focusRole);
+    $("#rosterMsg").textContent = "";
+    if (!roster.open) roster.showModal();
+  }
+  $("#rosterBtn").addEventListener("click", () => openRoster());
+  $("#rosterClose").addEventListener("click", () => roster.close());
+  $("#rosterDone").addEventListener("click", () => roster.close());
+  $("#rosterReset").addEventListener("click", () => { rosterLocal = {}; saveRoster(); renderRoster(); $("#rosterMsg").textContent = "기본값으로 되돌렸습니다."; });
+  $("#rosterCopy").addEventListener("click", async () => {
+    // 다른 기기에서도 같게 보이도록 office.config.json 의 roles 에 붙여 넣을 내용
+    const out = {};
+    for (const role of roleKeys()) { const r = roleInfo(role); out[role] = { person: r.person, avatar: r.avatar }; }
+    const text = JSON.stringify(out, null, 2);
+    try { await navigator.clipboard.writeText(text); $("#rosterMsg").textContent = "복사했습니다. office.config.json 의 roles 에 person·avatar 로 넣으면 모든 기기에 적용됩니다."; }
+    catch (_) { $("#rosterMsg").textContent = "자동 복사가 막혀 있습니다: " + text.replace(/\s+/g, " "); }
+  });
   $("#infoClose").addEventListener("click", () => $("#info").close());
   $("#info").addEventListener("click", (e) => { if (e.target.id === "info") e.target.close(); });
 
