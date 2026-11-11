@@ -182,7 +182,11 @@
   function centerRooms() {
     for (const f of floors) {
       const sc = f.root.querySelector(".room-scroll");
-      if (sc && !sc.dataset.touched) sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2;
+      if (sc && !sc.dataset.touched) {
+        // 대표실은 문 앞 질문 줄이 보이도록 오른쪽으로, 다른 층은 가운데
+        const want = f.kind === "ceo" ? sc.scrollWidth * 0.76 - sc.clientWidth * 0.62 : (sc.scrollWidth - sc.clientWidth) / 2;
+        sc.scrollLeft = Math.max(0, Math.min(sc.scrollWidth - sc.clientWidth, want));
+      }
       if (sc && !sc.dataset.bound) {
         sc.dataset.bound = "1";
         sc.addEventListener("pointerdown", () => (sc.dataset.touched = "1"), { passive: true });
@@ -380,6 +384,7 @@
         a.tag.textContent = label;
         setAvatar(a, info.avatar);
         if (info.role) a.root.dataset.role = info.role; else delete a.root.dataset.role;
+        if (w.kind === "queue") a.root.dataset.qid = w.q.id; else delete a.root.dataset.qid;
         a.look = w.look;
         const extra = w.kind === "queue"
           ? `\n질문: ${w.q.text || "(내용 없음)"}`
@@ -410,6 +415,7 @@
       f.cnt.textContent = f.kind === "ceo" ? `${list.length}명 · ❓${questions.length}` : `${list.length}명`;
     }
     firstSnapshot = false;
+    updateAskPill(questions);
 
     // 하루 끝 → 방마다 차례로 불 끄기
     const ended = !!d.dayEnded;
@@ -547,6 +553,7 @@
   }
   // ------------------------------------------------------------ 사람 상세 (눌러서 보기)
   function showInfo(root) {
+    if (root.dataset.qid) return openQbox(root.dataset.qid); // 줄 선 사람을 누르면 바로 답하기
     const lines = (root.title || "").split("\n");
     $("#infoName").textContent = lines[0] || "";
     const list = $("#infoList");
@@ -568,6 +575,92 @@
     if (!d.open) d.showModal();
   }
   $("#infoRename").addEventListener("click", (e) => { const r = e.currentTarget.dataset.role; $("#info").close(); openRoster(r); });
+
+  // ------------------------------------------------------------ 질문함 (사장님 답변)
+  // 화면에서 답을 적으면 [답변] 글을 만들어 준다. Claude 대화에 붙여넣으면 직원에게 전달된다.
+  const qbox = $("#qbox");
+  const ANS_KEY = "office-answers";
+  let answers = {};
+  try { answers = JSON.parse(localStorage.getItem(ANS_KEY) || "{}") || {}; } catch (_) {}
+  const saveAnswers = () => { try { localStorage.setItem(ANS_KEY, JSON.stringify(answers)); } catch (_) {} };
+  const QUICK = ["네, 그렇게 해 주세요.", "아니요, 하지 마세요.", "알아서 정해 주세요."];
+  function currentQuestions() {
+    const qs = (data && Array.isArray(data.questions)) ? data.questions.filter((q) => q && q.id != null) : [];
+    return qs.slice().sort((a, b) => (ms(a.askedAt) ?? 0) - (ms(b.askedAt) ?? 0));
+  }
+  function asker(q) {
+    const sess = (data.sessions || []).find((x) => String(x.id) === String(q.sessionId));
+    const i = sess ? who(sess) : { label: q.from || "직원", title: null };
+    return i.title && i.title !== i.label ? `${i.label} · ${i.title}` : i.label;
+  }
+  function updateAskPill(qs) {
+    const pill = $("#askPill");
+    pill.hidden = !qs.length;
+    $("#askCount").textContent = qs.length;
+  }
+  function renderQbox(focusId) {
+    const list = $("#qList");
+    list.textContent = "";
+    const qs = currentQuestions();
+    $("#qEmpty").hidden = qs.length > 0;
+    $("#qMake").disabled = !qs.length;
+    const nowSrv = ms(data && data.updatedAt) ?? Date.now();
+    for (const q of qs) {
+      const li = el("li", "q-card");
+      li.dataset.qid = q.id;
+      const head = el("div", "q-head");
+      const t = ms(q.askedAt);
+      head.append(el("b", null, asker(q)), el("span", "q-wait", t != null ? `${fmtMin(Math.max(0, (nowSrv - t) / 60000))} 기다림` : ""));
+      const text = el("p", "q-text", q.text || "(내용 없음)");
+      const ta = el("textarea");
+      ta.id = "ans-" + q.id; ta.rows = 2; ta.placeholder = "여기에 답을 적으세요";
+      ta.value = answers[q.id] || "";
+      ta.setAttribute("aria-label", `${q.text} 에 대한 답`);
+      ta.addEventListener("input", () => { answers[q.id] = ta.value; saveAnswers(); $("#qErr").textContent = ""; });
+      const quick = el("div", "q-quick");
+      for (const qt of QUICK) {
+        const b = el("button", "chip-btn", qt.replace(/[.,].*$/, ""));
+        b.type = "button";
+        b.addEventListener("click", () => { ta.value = qt; answers[q.id] = qt; saveAnswers(); $("#qErr").textContent = ""; ta.focus(); });
+        quick.append(b);
+      }
+      li.append(head, text, ta, quick);
+      list.append(li);
+      if (String(q.id) === String(focusId)) requestAnimationFrame(() => { li.scrollIntoView({ block: "nearest" }); ta.focus(); });
+    }
+  }
+  function openQbox(focusId) {
+    if (!data) return;
+    qbox.classList.remove("done");
+    $("#qErr").textContent = ""; $("#qCopyMsg").textContent = "";
+    renderQbox(focusId);
+    if ($("#info").open) $("#info").close();
+    if (!qbox.open) qbox.showModal();
+  }
+  $("#askPill").addEventListener("click", () => openQbox());
+  $("#qClose").addEventListener("click", () => qbox.close());
+  $("#qBack").addEventListener("click", () => qbox.classList.remove("done"));
+  $("#qMake").addEventListener("click", () => {
+    const qs = currentQuestions().filter((q) => (answers[q.id] || "").trim());
+    if (!qs.length) { $("#qErr").textContent = "답을 하나 이상 적어 주세요."; return; }
+    $("#qErr").textContent = "";
+    const text = ["[답변]", ...qs.flatMap((q) => [`${q.id} (${asker(q)}) ${q.text || ""}`, `→ ${answers[q.id].trim()}`])].join("\n");
+    $("#qOut").value = text;
+    $("#qOut").dataset.ids = qs.map((q) => q.id).join(",");
+    qbox.classList.add("done");
+  });
+  $("#qCopy").addEventListener("click", async () => {
+    const out = $("#qOut");
+    let ok = true;
+    try { await navigator.clipboard.writeText(out.value); }
+    catch (_) { ok = false; out.focus(); out.select(); }
+    $("#qCopyMsg").textContent = ok ? "복사했습니다. Claude 앱 대화창에 붙여넣고 보내세요." : "자동 복사가 막혀 있어 글을 선택해 두었습니다. 길게 눌러 '복사'를 고르세요.";
+    const ids = (out.dataset.ids || "").split(",").filter(Boolean);
+    for (const id of ids) delete answers[id];
+    saveAnswers();
+    // 시연 모드에서만: 답을 받은 직원이 줄에서 빠지는 모습을 보여 준다 (실제 모드는 직원 쪽 기록이 바뀔 때 빠짐)
+    if (DEMO && DEMO.answer) ids.forEach((id) => DEMO.answer(id));
+  });
 
   // ------------------------------------------------------------ 사이트 연결
   // 직원마다 참고할 사이트를 묶어 둔다. 업무 지시서에 함께 들어가서 직원이 그 사이트를 읽고 쓴다.

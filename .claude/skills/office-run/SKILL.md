@@ -49,7 +49,14 @@ node tools/office.mjs state chief-<작업이름> working
 `chief-reviewer`에게 작업 폴더 경로를 주고 검수·보고서를 맡긴다. 끝나면 `state chief-<작업이름> reporting`.
 
 ## 6. 사장님 질문
-직원·실장이 남긴 질문은 `node tools/office.mjs list`로 본다(대표실 앞 줄). AskUserQuestion 으로 한 번에 묻고, 답을 받으면 `node tools/office.mjs answer <질문id>`. 답 때문에 고칠 것이 있으면 해당 직원을 다시 부른다.
+직원·실장이 남긴 질문은 `node tools/office.mjs list`로 본다(대표실 앞 줄). 답은 두 길로 온다.
+1. **이 대화**: AskUserQuestion 으로 한 번에 묻는다(휴대폰 앱에서도 선택 카드로 뜬다).
+2. **화면의 질문함**: 사장님이 `[답변]` 블록을 붙여넣는다. 형식은 질문마다 두 줄 – `<질문id> (<누가>) <질문>` 다음 줄 `→ <답>`.
+답을 받으면 질문마다:
+- `work/<작업이름>/answers.md`에 `질문id / 질문 / 답 / 받은 시각`을 덧붙인다(직원은 brief 와 함께 이 파일을 읽는다).
+- `node tools/office.mjs answer <질문id>` (줄에서 빠짐), 그 직원 상태를 `working`으로.
+- 답 때문에 고칠 것이 있으면 그 직원을 다시 부르며 답을 그대로 전한다.
+`[답변]`의 질문id가 `list`에 없으면 이미 처리된 것이므로 사장님께 그렇다고 알리고 넘어간다. 답을 지어내거나 대신 정하지 않는다.
 
 ## 7. 보고
 사장님께 아래만 짧게 보고한다. 꾸밈말 없이.
