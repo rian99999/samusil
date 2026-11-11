@@ -412,7 +412,7 @@
       chip(`보고 ${c.reporting}`, "k-report"); chip(`대기 ${c.idle}`, "k-idle");
       if (f.kind === "ceo") chip(`질문 ${questions.length}`, "k-ask");
       if (overflow) chip(`자리 부족 +${overflow}명 (표시 안 됨)`, "overflow");
-      f.cnt.textContent = f.kind === "ceo" ? `${list.length}명 · ❓${questions.length}` : `${list.length}명`;
+      f.cnt.textContent = f.kind === "ceo" ? `${list.length}명 · 질문 ${questions.length}` : `${list.length}명`;
     }
     firstSnapshot = false;
     updateAskPill(questions);

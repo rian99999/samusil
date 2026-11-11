@@ -4,16 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI 사무실</title>
-  <meta name="theme-color" content="#2c3038">
+  <meta name="theme-color" content="#221F26">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="AI 사무실">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tenor+Sans&family=Hahmlet:wght@300;400;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="top">
     <div class="brand">
-      <span class="logo" aria-hidden="true">🏢</span>
+      <span class="wm" aria-label="RIAN">RIAN</span>
       <div>
         <h1>AI 사무실</h1>
         <p class="tagline">실행 중인 AI 작업 세션을 사무실 사람으로 보여 줍니다</p>
@@ -23,12 +25,12 @@
       <div id="status" class="status checking" role="status" aria-live="polite">
         <span class="dot" aria-hidden="true"></span><span id="statusText">확인 중</span>
       </div>
-      <button class="task-btn" type="button" data-open-task aria-haspopup="dialog">＋ 업무 맡기기</button>
+      <button class="task-btn" type="button" data-open-task aria-haspopup="dialog">업무 맡기기</button>
       <button class="help-btn sites-btn" type="button" data-open-sites aria-haspopup="dialog" aria-label="사이트 연결">
-        <span aria-hidden="true">🔗</span><em>사이트 연결</em>
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></span><em>사이트 연결</em>
       </button>
       <button id="rosterBtn" class="help-btn roster-btn" type="button" aria-haspopup="dialog" aria-label="직원 명부">
-        <span aria-hidden="true">👤</span><em>직원 명부</em>
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span><em>직원 명부</em>
       </button>
       <button id="helpBtn" class="help-btn" type="button" aria-haspopup="dialog" aria-label="사용설명서">
         <span aria-hidden="true">?</span><em>사용설명서</em>
@@ -61,7 +63,7 @@
 
   <!-- 답할 질문이 있을 때만 보이는 버튼 -->
   <button id="askPill" class="ask-pill" type="button" aria-haspopup="dialog" hidden>
-    <span aria-hidden="true">❓</span> 답할 질문 <b id="askCount">0</b>
+    답할 질문 <b id="askCount">0</b>
   </button>
 
   <!-- 질문함 -->
@@ -97,7 +99,7 @@
   </dialog>
 
   <!-- 휴대폰: 엄지로 누르는 업무 맡기기 버튼 -->
-  <button class="fab" type="button" data-open-task aria-haspopup="dialog">＋ 업무 맡기기</button>
+  <button class="fab" type="button" data-open-task aria-haspopup="dialog">업무 맡기기</button>
 
   <!-- 사람 상세 (눌러서 보기) -->
   <dialog id="info" class="sheet" aria-labelledby="infoName">
@@ -146,7 +148,7 @@
     <p id="siteMsg" class="copy-msg ros-msg" role="status" aria-live="polite"></p>
     <div class="row ros-actions">
       <button id="siteCopy" class="ghost" type="button">설정용 복사</button>
-      <button id="sitesDone" class="primary" type="button">완료</button>
+      <button id="sitesDone" class="ghost" type="button">완료</button>
     </div>
   </dialog>
 
@@ -266,8 +268,8 @@
               <tr><td><i class="mini" style="--c:1;--r:2;background-image:url(assets/chars/c5.png)"></i></td><td><b>💤 졸음</b></td><td>10분 넘게 기다리는 중</td></tr>
             </tbody>
           </table>
-          <p><b>🔗 사이트 연결</b>에 우리 블로그·인스타·홈페이지·경쟁사 주소를 넣고 직원을 고르면, 업무 지시서에 함께 들어가 직원이 그 사이트를 읽고 참고합니다. (읽기만 하고, 글을 올리지는 않습니다.)</p>
-          <p>캐릭터는 남녀 6가지 3D 모습입니다. 위쪽 <b>👤 직원 명부</b>에서 직원마다 이름과 모습을 정할 수 있습니다.</p>
+          <p><b>사이트 연결</b>에 우리 블로그·인스타·홈페이지·경쟁사 주소를 넣고 직원을 고르면, 업무 지시서에 함께 들어가 직원이 그 사이트를 읽고 참고합니다. (읽기만 하고, 글을 올리지는 않습니다.)</p>
+          <p>캐릭터는 남녀 6가지 3D 모습입니다. 위쪽 <b>직원 명부</b>에서 직원마다 이름과 모습을 정할 수 있습니다.</p>
           <p>사람을 <b>누르면</b> 이름, 상태, 걸린 시간이 나옵니다. (컴퓨터는 마우스를 올려도 됩니다.)</p>
         </li>
         <li>
@@ -277,7 +279,7 @@
         <li>
           <h3>대표실 앞 질문 줄</h3>
           <p>나에게 묻는 질문은 대표실 문 앞에 줄을 섭니다. 오래 기다릴수록 힘들어해요.</p>
-          <p><b>답하는 법 두 가지:</b> ① Claude 대화에 질문 카드가 뜨면 거기서 고르거나 적습니다. ② 화면에서 줄 선 사람이나 아래 <b>❓ 답할 질문</b>을 누르고 답을 적은 뒤 <b>답변 만들기 → 복사하기</b>, 그 Claude 대화에 붙여넣습니다.</p>
+          <p><b>답하는 법 두 가지:</b> ① Claude 대화에 질문 카드가 뜨면 거기서 고르거나 적습니다. ② 화면에서 줄 선 사람이나 아래 <b>답할 질문</b>을 누르고 답을 적은 뒤 <b>답변 만들기 → 복사하기</b>, 그 Claude 대화에 붙여넣습니다.</p>
           <p class="scale"><span>3분까지 <b>서서 대기</b></span><span>3분 넘음 <b>💧</b></span><span>10분 넘음 <b>쪼그려 앉아 💧💧</b></span></p>
         </li>
         <li>
@@ -290,7 +292,7 @@
         </li>
         <li>
           <h3>휴대폰으로 일 시키기</h3>
-          <p>아래 <b>＋ 업무 맡기기</b>를 누르고 빈칸을 채운 뒤 <b>지시서 만들기 → 복사하기</b>. Claude 앱의 samusil 대화에 붙여넣고 보내면 직원들이 일을 시작합니다. 질문이 생기면 그 대화에서 묻습니다.</p>
+          <p>아래 <b>업무 맡기기</b>를 누르고 빈칸을 채운 뒤 <b>지시서 만들기 → 복사하기</b>. Claude 앱의 samusil 대화에 붙여넣고 보내면 직원들이 일을 시작합니다. 질문이 생기면 그 대화에서 묻습니다.</p>
           <p>휴대폰에서는 위쪽 층 이름을 눌러 층을 옮기고, 사무실 그림은 <b>좌우로 밀어서</b> 봅니다.</p>
         </li>
         <li>
