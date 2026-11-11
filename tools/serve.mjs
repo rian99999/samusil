@@ -14,9 +14,11 @@ const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
 const i = process.argv.indexOf("--port");
 const PORT = i > 0 ? +process.argv[i + 1] : 8080;
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml" };
+  ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json" };
 const PUBLIC = new Set(["index.html", "app.js", "style.css", "sim.js", "assets/office.png", "assets/layout.json",
-  ...[0, 1, 2, 3, 4, 5].map((n) => `assets/chars/c${n}.png`)]);
+  ...[0, 1, 2, 3, 4, 5].map((n) => `assets/chars/c${n}.png`),
+  "manifest.webmanifest", "assets/icons/icon-192.png", "assets/icons/icon-512.png",
+  "assets/icons/icon-maskable-512.png", "assets/icons/apple-touch-icon.png"]);
 
 function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
@@ -45,4 +47,9 @@ http.createServer((req, res) => {
     res.writeHead(200, { "content-type": TYPES[path.extname(rel)] || "application/octet-stream" });
     res.end(buf);
   });
-}).listen(PORT, () => console.log(`AI 사무실: http://localhost:${PORT}`));
+}).listen(PORT, async () => {
+  const { networkInterfaces } = await import("node:os");
+  const ips = Object.values(networkInterfaces()).flat().filter((n) => n && n.family === "IPv4" && !n.internal).map((n) => n.address);
+  console.log(`AI 사무실: http://localhost:${PORT}`);
+  for (const ip of ips) console.log(`같은 와이파이의 휴대폰에서: http://${ip}:${PORT}`);
+});
