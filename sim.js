@@ -70,10 +70,10 @@
         if (s && s.state !== next) { s.state = next; s.stateSince = iso(now()); }
       }
     }
-    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions })));
+    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions })));
     return {
       tick, snapshot, spawn, ask,
-      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions })) : null; },
+      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions })) : null; },
       setDayEnded(v) { dayEnded = v; },
       answer(id) { const i = questions.findIndex((q) => q.id === id); if (i >= 0) questions.splice(i, 1); },
       get paused() { return paused; }, get dayEnded() { return dayEnded; },

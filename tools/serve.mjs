@@ -8,6 +8,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
@@ -24,7 +25,38 @@ function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
   try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw e; }
-  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
+  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
+}
+
+// 화면의 질문함에서 '보내기' → office.mjs reply 로 기록 (잠금·검사는 office.mjs 가 한다)
+function reply(id, text) {
+  return new Promise((resolve) => {
+    execFile(process.execPath, [path.join(ROOT, "tools/office.mjs"), "reply", id, "--text", text, "--via", "screen"],
+      { env: process.env, timeout: 10000 }, (err, stdout, stderr) =>
+        resolve(err ? { id, ok: false, error: (stderr || err.message).replace(/^오류: /, "").trim() } : { id, ok: true }));
+  });
+}
+function answerApi(req, res) {
+  const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  if (req.method !== "POST") return send(405, { error: "POST 만 됩니다" });
+  // 다른 사이트에서 몰래 보내는 것을 막는다: 이 화면(같은 주소)에서 온 요청만 받는다
+  const origin = req.headers.origin;
+  if (origin && origin !== `http://${req.headers.host}`) return send(403, { error: "다른 사이트에서 온 요청" });
+  if (!(req.headers["content-type"] || "").startsWith("application/json")) return send(415, { error: "JSON 만 됩니다" });
+  let body = "";
+  req.on("data", (c) => { body += c; if (body.length > 50000) { req.destroy(); } });
+  req.on("end", async () => {
+    let list;
+    try { list = JSON.parse(body).answers; } catch { return send(400, { error: "잘못된 JSON" }); }
+    if (!Array.isArray(list) || !list.length || list.length > 20) return send(400, { error: "answers 가 필요합니다" });
+    const results = [];
+    for (const a of list) {
+      const id = String(a && a.id || ""), text = String(a && a.text || "").trim();
+      if (!/^q\d+$/.test(id) || !text) { results.push({ id, ok: false, error: "질문 번호나 답이 비었습니다" }); continue; }
+      results.push(await reply(id, text));
+    }
+    send(200, { results });
+  });
 }
 
 http.createServer((req, res) => {
@@ -40,6 +72,7 @@ http.createServer((req, res) => {
       return res.end("상태 파일을 읽지 못함: " + e.message);
     }
   }
+  if (url.pathname === "/api/answer") return answerApi(req, res);
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
   if (!PUBLIC.has(rel)) { res.writeHead(404); return res.end("not found"); }
   fs.readFile(path.join(ROOT, rel), (err, buf) => {

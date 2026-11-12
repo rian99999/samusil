@@ -321,7 +321,8 @@
 
   function apply(d) {
     const sessions = Array.isArray(d.sessions) ? d.sessions.filter((s) => s && s.id != null) : [];
-    const questions = Array.isArray(d.questions) ? d.questions.filter((q) => q && q.id != null) : [];
+    // 답이 기록된 질문은 줄에서 빠진다 (직원 쪽이 답을 받아 처리하는 중)
+    const questions = Array.isArray(d.questions) ? d.questions.filter((q) => q && q.id != null && !q.answer && !sentIds.has(String(q.id))) : [];
     buildFloors(Array.isArray(d.floors) ? d.floors.filter((f) => f && f.id != null && f.id !== "ceo") : []);
     const nowSrv = ms(d.updatedAt);
     const now = performance.now();
@@ -580,12 +581,13 @@
   // 화면에서 답을 적으면 [답변] 글을 만들어 준다. Claude 대화에 붙여넣으면 직원에게 전달된다.
   const qbox = $("#qbox");
   const ANS_KEY = "office-answers";
+  const sentIds = new Set(); // 방금 보낸 질문 (다음 자료가 올 때까지 줄에서 숨김)
   let answers = {};
   try { answers = JSON.parse(localStorage.getItem(ANS_KEY) || "{}") || {}; } catch (_) {}
   const saveAnswers = () => { try { localStorage.setItem(ANS_KEY, JSON.stringify(answers)); } catch (_) {} };
   const QUICK = ["네, 그렇게 해 주세요.", "아니요, 하지 마세요.", "알아서 정해 주세요."];
   function currentQuestions() {
-    const qs = (data && Array.isArray(data.questions)) ? data.questions.filter((q) => q && q.id != null) : [];
+    const qs = (data && Array.isArray(data.questions)) ? data.questions.filter((q) => q && q.id != null && !q.answer && !sentIds.has(String(q.id))) : [];
     return qs.slice().sort((a, b) => (ms(a.askedAt) ?? 0) - (ms(b.askedAt) ?? 0));
   }
   function asker(q) {
@@ -604,6 +606,7 @@
     const qs = currentQuestions();
     $("#qEmpty").hidden = qs.length > 0;
     $("#qMake").disabled = !qs.length;
+    $("#qSend").disabled = !qs.length;
     const nowSrv = ms(data && data.updatedAt) ?? Date.now();
     for (const q of qs) {
       const li = el("li", "q-card");
@@ -629,8 +632,13 @@
       if (String(q.id) === String(focusId)) requestAnimationFrame(() => { li.scrollIntoView({ block: "nearest" }); ta.focus(); });
     }
   }
+  const canSend = () => !!(DEMO || (data && data.canAnswer));
   function openQbox(focusId) {
     if (!data) return;
+    // 바로 보내기가 되는 화면(실제 서버·시연)이면 '보내기'가 주 버튼, 아니면 복사 방식
+    $("#qSend").hidden = !canSend();
+    $("#qMake").className = canSend() ? "ghost wide" : "primary wide";
+    $("#qSendMsg").textContent = "";
     qbox.classList.remove("done");
     $("#qErr").textContent = ""; $("#qCopyMsg").textContent = "";
     renderQbox(focusId);
@@ -648,6 +656,40 @@
     $("#qOut").value = text;
     $("#qOut").dataset.ids = qs.map((q) => q.id).join(",");
     qbox.classList.add("done");
+  });
+  $("#qSend").addEventListener("click", async () => {
+    const qs = currentQuestions().filter((q) => (answers[q.id] || "").trim());
+    if (!qs.length) { $("#qErr").textContent = "답을 하나 이상 적어 주세요."; return; }
+    $("#qErr").textContent = "";
+    const btn = $("#qSend");
+    btn.disabled = true; btn.textContent = "보내는 중…";
+    let results;
+    try {
+      if (DEMO) {
+        results = qs.map((q) => { DEMO.answer(q.id); return { id: q.id, ok: true }; });
+      } else {
+        const r = await fetch("api/answer", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ answers: qs.map((q) => ({ id: q.id, text: answers[q.id].trim() })) }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+        results = j.results || [];
+      }
+    } catch (e) {
+      $("#qSendMsg").textContent = `보내지 못했습니다(${e.message}). 아래 '복사해서 대화에 붙여넣기'로 보내 주세요.`;
+      btn.disabled = false; btn.textContent = "답변 보내기";
+      return;
+    }
+    const ok = results.filter((x) => x.ok), bad = results.filter((x) => !x.ok);
+    for (const x of ok) { sentIds.add(String(x.id)); delete answers[x.id]; }
+    saveAnswers();
+    btn.disabled = false; btn.textContent = "답변 보내기";
+    $("#qSendMsg").textContent =
+      (ok.length ? `${ok.length}개 보냈습니다. 직원이 답을 받아 일을 이어 갑니다.${DEMO ? " (시연)" : ""}` : "") +
+      (bad.length ? ` ${bad.length}개는 못 보냈습니다: ${bad.map((x) => `${x.id} – ${x.error}`).join(", ")}` : "");
+    renderQbox();
+    if (data) apply(data); // 줄에서 바로 빼기
   });
   $("#qCopy").addEventListener("click", async () => {
     const out = $("#qOut");

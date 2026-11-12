@@ -632,3 +632,8 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
   .brand .wm { font-size: 14px; padding: 7px 6px 7px 9px; }
   .top h1 { font-size: 17px; white-space: nowrap; }
 }
+
+.q-form #qMake { margin-top: 6px; }
+#qSendMsg:empty { display: none; }
+
+.ask-pill[hidden], #qSend[hidden] { display: none !important; }

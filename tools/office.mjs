@@ -5,7 +5,9 @@
 //   node tools/office.mjs state <id> working|blocked|reporting|idle
 //   node tools/office.mjs end   <id>                 # 퇴근
 //   node tools/office.mjs ask   <id> "질문 내용"      # 대표실 앞 줄에 섬 → 질문 id 출력
-//   node tools/office.mjs answer <질문id>             # 줄에서 빠짐
+//   node tools/office.mjs reply  <질문id> --text "답"  # 사장님 답 기록 (화면의 '보내기'가 쓰는 명령)
+//   node tools/office.mjs wait   <질문id> [--timeout 분] # 답이 올 때까지 기다렸다가 답을 출력
+//   node tools/office.mjs answer <질문id>             # 줄에서 빠짐(처리 끝)
 //   node tools/office.mjs day end|start              # 하루 끝(소등) / 다시 시작
 //   node tools/office.mjs list | reset
 import fs from "node:fs";
@@ -100,6 +102,29 @@ switch (cmd) {
     console.log(qid);
     break;
   }
+  case "reply": {
+    const text = (o.text || "").trim();
+    if (!text) die("답 내용이 필요합니다 (--text)");
+    if (text.length > 2000) die("답이 너무 깁니다 (2000자 이하)");
+    withLock((s) => {
+      const q = s.questions.find((x) => x.id === id);
+      if (!q) die("없는 질문: " + id + " (이미 처리됐을 수 있음)");
+      q.answer = text; q.answeredAt = nowIso(); q.answeredVia = o.via || "screen";
+    });
+    console.log("답 기록: " + id);
+    break;
+  }
+  case "wait": {
+    // 답이 기록될 때까지 2초마다 확인. 잠금 없이 읽기만 한다(쓰기는 통째로 바꿔치기라 반쯤 쓴 파일을 보지 않음).
+    const limit = Date.now() + (Number(o.timeout) > 0 ? Number(o.timeout) : 120) * 60000;
+    for (;;) {
+      const q = load().questions.find((x) => x.id === id);
+      if (!q) { console.log(JSON.stringify({ id, status: "gone" })); process.exit(3); }
+      if (q.answer) { console.log(JSON.stringify({ id, status: "answered", question: q.text, answer: q.answer, answeredAt: q.answeredAt, via: q.answeredVia })); process.exit(0); }
+      if (Date.now() > limit) { console.log(JSON.stringify({ id, status: "timeout" })); process.exit(2); }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+    }
+  }
   case "answer":
     withLock((s) => { s.questions = s.questions.filter((q) => q.id !== id); });
     console.log("답변 완료: " + id);
@@ -112,7 +137,7 @@ switch (cmd) {
   case "list": {
     const s = load();
     for (const x of s.sessions) console.log(`${x.id}\t${x.floor}\t${x.state}\t${x.name}`);
-    for (const q of s.questions) console.log(`${q.id}\t질문\t${q.from}\t${q.text}`);
+    for (const q of s.questions) console.log(`${q.id}\t${q.answer ? "답 옴" : "질문"}\t${q.from}\t${q.text}${q.answer ? "\t→ " + q.answer : ""}`);
     break;
   }
   case "reset":
@@ -120,5 +145,5 @@ switch (cmd) {
     console.log("초기화");
     break;
   default:
-    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 11).join("\n"));
+    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 14).join("\n"));
 }

@@ -26,6 +26,19 @@ http.createServer((req, res) => {
     res.writeHead(200, { "content-type": TYPES[".json"], "cache-control": "no-store" });
     return res.end(JSON.stringify(sim.snapshot()));
   }
+  if (url.pathname === "/api/answer" && req.method === "POST") {
+    // 시연: 받은 답의 질문을 줄에서 뺀다
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      let list = [];
+      try { list = JSON.parse(body).answers || []; } catch {}
+      const results = list.map((a) => { sim.answer(String(a.id)); return { id: a.id, ok: true }; });
+      res.writeHead(200, { "content-type": TYPES[".json"] });
+      res.end(JSON.stringify({ results }));
+    });
+    return;
+  }
   if (url.pathname === "/__mock") {
     const p = url.searchParams;
     if (p.has("pause")) sim.setPaused(p.get("pause") === "1");
