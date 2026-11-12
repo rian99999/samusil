@@ -132,6 +132,24 @@ https://www.figma.com/design/gpxpF7f9FKGPE3HEPLpRss
 - 컴퓨터가 꺼지거나 `serve.mjs`를 멈추면 화면은 '확인 중'으로 멈춘다. 집 밖(다른 인터넷)에서는 열리지 않는다.
 - 시연 링크(claude.ai 페이지)도 같은 방법으로 홈 화면에 추가할 수 있지만, 아이콘은 claude.ai 기본 모양이고 시연 자료만 나온다.
 
+## 직원의 스킬 사용
+
+모든 직원은 일을 시작할 때 Claude Code **스킬**을 불러 쓰고, 끝내기 전에 **자동 브랜드 검사**를 통과해야 한다.
+
+| 직원 | 스킬 (순서대로) |
+|---|---|
+| 모두 | `rian-brand` (이 저장소의 스킬: 브랜드 규칙 + 검사 순서) |
+| 네이버 | `marketing:seo-audit` · `marketing:draft-content` · `brand-voice:brand-voice-enforcement` · `design:ux-copy` |
+| 인스타 | `marketing:content-creation` · `brand-voice:brand-voice-enforcement` · `design:ux-copy` |
+| 스레드 | `marketing:draft-content` · `brand-voice:brand-voice-enforcement` · `design:ux-copy` |
+| 디자이너 | `figma:figma-use`·`figma-generate-design` (Figma 연결 시) · `design:design-critique` · `design:accessibility-review` · `design:ux-copy` |
+| 총괄 실장 | `marketing:brand-review` · `design:design-critique` · `design:accessibility-review` |
+| 업무 배정(메인 대화) | `rian-brand` · `marketing:campaign-plan` |
+
+- `rian-brand` 외의 스킬은 Claude Code 에 해당 플러그인(marketing, brand-voice, design, figma)이 설치돼 있어야 쓸 수 있다. 없으면 직원은 건너뛰고 결과 파일에 "없음: <이름>"으로 적는다.
+- 자동 검사: `node tools/brand-check.mjs work/<작업>/*.md` — 금지 표현·이모지·보석 비유, 상호 표기(처음엔 전체 상호), 건물명, facts.md 에 없는 금액, 계좌번호, 인스타 해시태그 3~5개, 네이버 첫 문장, 디자인 색 코드. 오류가 있으면 실장 검수로 넘어가지 않는다.
+- 결과 파일 맨 위에 `사용한 스킬:`과 `브랜드 검사:` 줄이 남고, 실장 보고서에 직원별 스킬 사용 표가 들어간다.
+
 ## 브랜드: RIAN
 
 직원은 모두 **리안 퍼스널컬러&메이크업(RIAN)** 규칙을 따른다.
