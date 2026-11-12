@@ -25,7 +25,7 @@ function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
   try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw e; }
-  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
+  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, canApprove: true, approvals: s.approvals || [], roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
 }
 
 // 화면의 질문함에서 '보내기' → office.mjs reply 로 기록 (잠금·검사는 office.mjs 가 한다)
@@ -34,6 +34,47 @@ function reply(id, text) {
     execFile(process.execPath, [path.join(ROOT, "tools/office.mjs"), "reply", id, "--text", text, "--via", "screen"],
       { env: process.env, timeout: 10000 }, (err, stdout, stderr) =>
         resolve(err ? { id, ok: false, error: (stderr || err.message).replace(/^오류: /, "").trim() } : { id, ok: true }));
+  });
+}
+// 결재할 자료 보여 주기: work/ 와 reports/ 안의 글·그림만, 그 밖은 막는다
+const VIEW_TYPES = { ".md": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
+function fileApi(url, res) {
+  const rel = String(url.searchParams.get("path") || "").replace(/\\/g, "/");
+  const abs = path.resolve(ROOT, rel);
+  const relNorm = path.relative(ROOT, abs).split(path.sep).join("/");
+  const type = VIEW_TYPES[path.extname(abs).toLowerCase()];
+  let real;
+  try { real = fs.realpathSync(abs); } catch { real = null; }
+  const inside = real && /^(work|reports)\//.test(path.relative(fs.realpathSync(ROOT), real).split(path.sep).join("/"));
+  if (!/^(work|reports)\//.test(relNorm) || !type || !inside) { res.writeHead(404); return res.end("not found"); }
+  fs.readFile(real, (err, buf) => {
+    if (err) { res.writeHead(404); return res.end("not found"); }
+    res.writeHead(200, { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff" });
+    res.end(buf);
+  });
+}
+function runOffice(args) {
+  return new Promise((resolve) => {
+    execFile(process.execPath, [path.join(ROOT, "tools/office.mjs"), ...args], { env: process.env, timeout: 10000 }, (err, stdout, stderr) =>
+      resolve(err ? { ok: false, error: (stderr || err.message).replace(/^오류: /, "").trim() } : { ok: true }));
+  });
+}
+function readJson(req, res, send, cb) {
+  if (req.method !== "POST") return send(405, { error: "POST 만 됩니다" });
+  const origin = req.headers.origin;
+  if (origin && origin !== `http://${req.headers.host}`) return send(403, { error: "다른 사이트에서 온 요청" });
+  if (!(req.headers["content-type"] || "").startsWith("application/json")) return send(415, { error: "JSON 만 됩니다" });
+  let body = "";
+  req.on("data", (c) => { body += c; if (body.length > 50000) req.destroy(); });
+  req.on("end", () => { let j; try { j = JSON.parse(body); } catch { return send(400, { error: "잘못된 JSON" }); } cb(j); });
+}
+function decideApi(req, res) {
+  const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  readJson(req, res, send, async (j) => {
+    const id = String(j.id || ""), decision = String(j.decision || ""), note = String(j.note || "").trim();
+    if (!/^a\d+$/.test(id) || !["approve", "revise"].includes(decision)) return send(400, { error: "결재 번호나 결정이 잘못됐습니다" });
+    const r = await runOffice(["decide", id, decision, ...(note ? ["--note", note] : []), "--via", "screen"]);
+    send(r.ok ? 200 : 409, r.ok ? { ok: true } : { error: r.error });
   });
 }
 function answerApi(req, res) {
@@ -73,6 +114,8 @@ http.createServer((req, res) => {
     }
   }
   if (url.pathname === "/api/answer") return answerApi(req, res);
+  if (url.pathname === "/api/decide") return decideApi(req, res);
+  if (url.pathname === "/api/file") return fileApi(url, res);
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
   if (!PUBLIC.has(rel)) { res.writeHead(404); return res.end("not found"); }
   fs.readFile(path.join(ROOT, rel), (err, buf) => {

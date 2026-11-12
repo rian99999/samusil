@@ -37,6 +37,16 @@
       { id: "q" + (++qseq), sessionId: "s6", from: "인스타 담당", text: "브랜드 해시태그를 새로 만들까요, 기존 것을 쓸까요?", askedAt: iso(now() - 12 * MIN) },
       { id: "q" + (++qseq), sessionId: "s2", from: "디자이너", text: "메인 색을 파랑으로 확정해도 될까요?", askedAt: iso(now() - 4 * MIN) },
     ];
+    // 시연용 결재: 실제 파일 대신 내용을 함께 들고 있다
+    const approvals = [{
+      id: "a1", sessionId: "s1", from: "총괄 실장", status: "pending", submittedAt: iso(now() - 6 * MIN),
+      title: "가을 립 톤 — 인스타 피드 원고 + 카드뉴스 시안 설계",
+      files: ["work/demo/instagram.md", "work/demo/design.md"],
+      preview: {
+        "work/demo/instagram.md": "사용한 스킬: rian-brand, marketing:content-creation, brand-voice:brand-voice-enforcement, design:ux-copy\n브랜드 검사: 오류 0 / 경고 0\n\n# 인스타그램 피드\n\n## 첫 줄\n같은 코랄인데 왜 나만 얼굴이 칙칙해 보일까요?\n\n## 본문\n원인은 색 이름이 아니라 명도와 채도 차이예요. 리안 퍼스널컬러&메이크업에서는 진단 결과에 맞춰 같은 계열 안에서 고르는 법을 알려 드려요.\n\n나중에 립 고를 때 보려면 저장해 두세요.\n\n#서면퍼스널컬러 #부산퍼스널컬러 #퍼스널컬러진단 #메이크업컨설팅\n\n| 메뉴 | 총액 | 예약금 |\n| --- | --- | --- |\n| 퍼스널컬러 진단 1인 | 70,000원 | 20,000원 |",
+        "work/demo/design.md": "사용한 스킬: rian-brand, design:design-critique, design:accessibility-review\n브랜드 검사: 오류 0 / 경고 0\n\n# 카드뉴스 4장 (1080×1350)\n\n1. **표지** — Mist Light 배경, 국문 헤드 Hahmlet Light 88px, Tourmaline 은 쓰지 않음\n2. **원인** — Raw 배경, 명도·채도 비교 칩 2개(고객 색 칩만 유채색)\n3. **고르는 법** — Raw 배경, 목록 기호는 Tourmaline 마름모 (이 장의 Tourmaline 한 곳)\n4. **예약 안내** — '예약 · 네이버 플레이스' 만 Tourmaline, RIAN 워드마크 좌상단\n\nFigma 미연결 – 설계서만 작성",
+      },
+    }];
     const timers = [];
     const later = (ms, fn) => timers.push({ at: now() + ms, fn });
     const SUB = { design: ["카드뉴스 시안", "배너 수정"], naver: ["본문 초안", "태그 정리"], insta: ["캡션 작성", "해시태그 조사"], threads: ["타래 초안", "댓글 답변안"] };
@@ -70,11 +80,12 @@
         if (s && s.state !== next) { s.state = next; s.stateSince = iso(now()); }
       }
     }
-    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions })));
+    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })));
     return {
       tick, snapshot, spawn, ask,
-      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions })) : null; },
+      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })) : null; },
       setDayEnded(v) { dayEnded = v; },
+      decide(id, decision, note) { const a = approvals.find((x) => x.id === id); if (a && a.status === "pending") { a.status = decision === "approve" ? "approved" : "revise"; a.decisionNote = note || ""; a.decidedAt = iso(now()); } },
       answer(id) { const i = questions.findIndex((q) => q.id === id); if (i >= 0) questions.splice(i, 1); },
       get paused() { return paused; }, get dayEnded() { return dayEnded; },
     };

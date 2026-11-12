@@ -39,6 +39,16 @@ http.createServer((req, res) => {
     });
     return;
   }
+  if (url.pathname === "/api/decide" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try { const j = JSON.parse(body); sim.decide(String(j.id), j.decision, j.note); } catch {}
+      res.writeHead(200, { "content-type": TYPES[".json"] });
+      res.end(JSON.stringify({ ok: true }));
+    });
+    return;
+  }
   if (url.pathname === "/__mock") {
     const p = url.searchParams;
     if (p.has("pause")) sim.setPaused(p.get("pause") === "1");

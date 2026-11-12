@@ -59,6 +59,24 @@ node tools/office.mjs state chief-<작업이름> working
 ```
 `chief-reviewer`에게 작업 폴더 경로를 주고 검수·보고서를 맡긴다. 끝나면 `state chief-<작업이름> reporting`.
 
+## 5-1. 결재 올리기 (사장님 컨펌)
+실장 검수가 끝나면(판정이 "다시 만들어야 함"이 아니면) 결과물을 사장님 결재에 올린다. 사장님은 사무실 화면의 **결재함**에서 원고·시안을 바로 읽고 승인하거나 수정 요청을 보낸다.
+```bash
+node tools/office.mjs submit chief-<작업이름> --title "<주제> — <채널들>" \
+  --file work/<작업이름>/naver.md --file work/<작업이름>/instagram.md \
+  --file work/<작업이름>/threads.md --file work/<작업이름>/design.md --file reports/<작업이름>.md
+```
+- 올린 파일만 화면에 보인다(`work/`·`reports/` 안의 .md·.txt·.png·.jpg·.webp). 시안 그림 파일이 있으면 함께 `--file`로 올린다. Figma·Canva 링크는 design.md 맨 위에 있으면 화면에서 눌러 열 수 있다.
+- 결재 번호(a숫자)가 나온다. 이 대화에 "a2 결재 올렸습니다 — 사무실 화면 결재함에서 확인해 주세요"라고 적고, **백그라운드로** 기다린다:
+  `node tools/office.mjs wait-approval <결재id> --timeout 240`
+- 결과 `status`:
+  - `approved` → 승인. `note`가 있으면 그대로 반영할 것만 반영하고 보고로 간다.
+  - `revise` → `note`(사장님 의견)를 `work/<작업이름>/answers.md`에 "결재 의견"으로 적고, 해당 직원을 다시 불러 고치게 한다 → 자동 검사 → 실장 재검수 → **새로** `submit` (이전 결재는 `close`).
+  - `timeout` → 사장님께 한 번 더 알리고 다시 기다린다. `gone` → 정리된 것, 넘어간다.
+- 사장님이 대화에서 "승인", "○○ 고쳐 줘"라고 답해도 같은 결정으로 처리한다: `node tools/office.mjs decide <결재id> approve|revise --note "…" --via chat`.
+- brief 에 "시안 먼저 확인"이 있으면 디자이너 설계서(design.md)만 먼저 같은 방식으로 결재에 올리고, 승인 뒤에 나머지를 진행한다.
+- 결재가 끝나면 `node tools/office.mjs close <결재id>`.
+
 ## 6. 사장님 질문
 직원·실장이 사장님 결정이 필요하면 `node tools/office.mjs ask <id> "질문"` → 질문 id(q숫자)가 나온다. 대표실 앞 줄에 서고 화면에 '답할 질문'이 뜬다.
 
@@ -80,7 +98,7 @@ node tools/office.mjs state chief-<작업이름> working
 
 ## 7. 보고
 사장님께 아래만 짧게 보고한다. 꾸밈말 없이.
-1. 한 줄 결론 (보고서의 결론 그대로)
+1. 한 줄 결론 (보고서의 결론 그대로)과 결재 결과(승인/수정 반영 횟수)
 2. 직원별로 쓴 스킬과 브랜드 검사 결과(오류 0 / 경고 N), 빠진 스킬이 있으면 그 이름
 3. 보고서 경로와 결과 파일 경로
 4. 꼭 고칠 것 / 정해 주셔야 할 것

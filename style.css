@@ -637,3 +637,49 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
 #qSendMsg:empty { display: none; }
 
 .ask-pill[hidden], #qSend[hidden] { display: none !important; }
+
+/* ============ 결재함 ============ */
+.ap-pill { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); background: var(--surface); color: var(--ink); border: 1px solid var(--ink); }
+.ap-pill b { background: var(--ink); color: var(--bg); }
+#apPill[hidden] { display: none !important; }
+.approvals { width: min(760px, calc(100vw - 32px)); }
+.ap-list-view, .ap-detail-view { padding: 12px 20px 20px; }
+.ap-detail-view { display: none; }
+.approvals.detail .ap-list-view { display: none; }
+.approvals.detail .ap-detail-view { display: grid; gap: 10px; }
+.ap-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ap-item { width: 100%; text-align: left; cursor: pointer; display: grid; gap: 4px; padding: 14px; min-height: 56px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-top: 1px solid var(--ink); font: inherit; }
+.ap-item:hover { background: var(--bg); }
+.ap-item b { font-size: 15.5px; }
+.ap-meta { margin: 0; font-size: 13px; color: var(--muted); }
+.ap-msg:empty, #apErr:empty, #apMsg:empty { display: none; }
+.ap-back { justify-self: start; font-size: 14px; }
+.ap-title { margin: 0; font-family: var(--f-disp); font-weight: 400; font-size: 20px; }
+.ap-files { display: grid; gap: 14px; }
+.ap-file { border: 1px solid var(--line); background: var(--surface); }
+.ap-file-name { margin: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--bg); overflow-wrap: anywhere; }
+.ap-doc { padding: 12px 14px; font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.ap-doc h2, .ap-doc h3, .ap-doc h4 { font-family: var(--f-disp); font-weight: 400; margin: 14px 0 6px; }
+.ap-doc h2 { font-size: 19px; } .ap-doc h3 { font-size: 17px; } .ap-doc h4 { font-size: 15.5px; }
+.ap-doc p, .ap-doc ul, .ap-doc ol, .ap-doc blockquote { margin: 6px 0; }
+.ap-doc ul, .ap-doc ol { padding-left: 22px; }
+.ap-doc blockquote { border-left: 2px solid var(--line); padding-left: 10px; color: var(--ink-2); }
+.ap-doc code { background: var(--bg); padding: 1px 5px; font-size: 13px; }
+.ap-doc a { color: var(--ink); text-decoration: underline; }
+.ap-doc img { display: block; max-width: 100%; height: auto; margin: 0 auto; border: 1px solid var(--line); }
+.ap-doc .md-table { overflow-x: auto; }
+.ap-doc table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.ap-doc th, .ap-doc td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.ap-doc thead th { border-top: 1px solid var(--ink); font-weight: 600; }
+.ap-loading { color: var(--muted); }
+.ap-decide { display: grid; gap: 8px; border-top: 1px solid var(--ink); padding-top: 12px; position: sticky; bottom: 0; background: var(--surface); padding-bottom: 4px; }
+.ap-decide label { font-size: 14px; font-weight: 700; }
+.ap-opt { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.ap-decide textarea { width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); resize: vertical; }
+.ap-decide textarea:focus { outline: 2px solid var(--ink); }
+@media (max-width: 760px) {
+  .ap-list-view, .ap-detail-view { padding-left: 16px; padding-right: 16px; }
+  .approvals { width: 100vw; }
+}
+.ap-pill:has(+ .ask-pill[hidden]) { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }

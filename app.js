@@ -280,6 +280,7 @@
       if (k === "coffee") add("coffee", "☕");
       if (k === "zzz") add("zzz", "💤");
       if (k === "ask") add("ask", "❓");
+      if (k === "doc") add("ask", "📋");
     }
   }
 
@@ -304,6 +305,12 @@
           ? { pose: "doze", fx: "zzz", text: `대기 · ${fmtMin(stateMin)}째 (졸음)` }
           : { pose: "stand", fx: "coffee", text: `대기 · ${fmtMin(stateMin)}째` };
     }
+  }
+  function approvalLook(ap, nowSrv) {
+    const t = ms(ap.submittedAt);
+    const w = t != null ? (nowSrv - t) / 60000 : 0;
+    if (w > CFG.queueSquatMin) return { pose: "squat", fx: "doc sweat", text: `결재 대기 ${fmtMin(w)}` };
+    return { pose: "stand", fx: "doc", text: `결재 대기 ${fmtMin(w)}` };
   }
   function questionLook(q, nowSrv) {
     const t = ms(q.askedAt);
@@ -347,11 +354,21 @@
       }
       // 질문 → 대표실 앞 줄
       if (f.kind === "ceo") {
-        const qs2 = questions.slice().sort((a, b) => (ms(a.askedAt) ?? 0) - (ms(b.askedAt) ?? 0));
-        qs2.forEach((q, i) => {
+        const line = [
+          ...questions.map((q) => ({ t: ms(q.askedAt) ?? 0, q })),
+          ...pendingApprovals(d).map((ap) => ({ t: ms(ap.submittedAt) ?? 0, ap })),
+        ].sort((x, y) => x.t - y.t);
+        line.forEach((it, i) => {
           if (i >= L.queue.max) { overflow++; return; }
-          const from = byId.get(String(q.sessionId));
-          want.set("q:" + q.id, { kind: "queue", target: queuePos(i), q, from, look: questionLook(q, nowSrv) });
+          if (it.q) {
+            const q = it.q, from = byId.get(String(q.sessionId));
+            want.set("q:" + q.id, { kind: "queue", target: queuePos(i), q, from, look: questionLook(q, nowSrv) });
+          } else {
+            const ap = it.ap, from = byId.get(String(ap.sessionId));
+            // 질문과 같은 자리 규칙을 쓰도록 q 모양으로 맞춘다
+            const q = { id: ap.id, sessionId: ap.sessionId, from: ap.from, text: ap.title, askedAt: ap.submittedAt };
+            want.set("ap:" + ap.id, { kind: "queue", approval: ap, target: queuePos(i), q, from, look: approvalLook(ap, nowSrv) });
+          }
         });
       }
 
@@ -370,7 +387,7 @@
           } else {
             place(a, elevator());
             a.path = pathIn(w.target, w.kind);
-            say(a, w.kind === "queue" ? "질문 있습니다!" : "출근합니다!", now);
+            say(a, w.approval ? "확인 부탁드립니다!" : w.kind === "queue" ? "질문 있습니다!" : "출근합니다!", now);
           }
         } else if (a.leaving) {
           // 나가던 중 다시 나타나면 되돌아온다
@@ -385,9 +402,12 @@
         a.tag.textContent = label;
         setAvatar(a, info.avatar);
         if (info.role) a.root.dataset.role = info.role; else delete a.root.dataset.role;
-        if (w.kind === "queue") a.root.dataset.qid = w.q.id; else delete a.root.dataset.qid;
+        if (w.kind === "queue" && !w.approval) a.root.dataset.qid = w.q.id; else delete a.root.dataset.qid;
+        if (w.approval) a.root.dataset.aid = w.approval.id; else delete a.root.dataset.aid;
         a.look = w.look;
-        const extra = w.kind === "queue"
+        const extra = w.approval
+          ? `\n결재: ${w.approval.title}\n자료 ${(w.approval.files || []).length}개`
+          : w.kind === "queue"
           ? `\n질문: ${w.q.text || "(내용 없음)"}`
           : `\n층: ${w.s.floor ?? "-"}${w.s.parentId ? `\n상위 작업: ${w.s.parentId}` : ""}`;
         const roleLine = info.title && info.title !== label ? `\n역할: ${info.title}` : "";
@@ -401,7 +421,7 @@
         a.root.classList.add("leaving");
         a.path = pathOut({ x: a.x, y: a.y }, a.kind);
         a.look = { pose: "walk", fx: "", text: "" };
-        say(a, a.kind === "queue" ? "답변 받았어요!" : "퇴근합니다!", now);
+        say(a, a.root.dataset.aid ? "확인 감사합니다!" : a.kind === "queue" ? "답변 받았어요!" : "퇴근합니다!", now);
       }
 
       // 층 요약
@@ -412,11 +432,13 @@
       chip(`작업 ${c.working}`, "k-work"); chip(`막힘 ${c.blocked}`, "k-block");
       chip(`보고 ${c.reporting}`, "k-report"); chip(`대기 ${c.idle}`, "k-idle");
       if (f.kind === "ceo") chip(`질문 ${questions.length}`, "k-ask");
+      if (f.kind === "ceo" && pendingApprovals(d).length) chip(`결재 ${pendingApprovals(d).length}`, "k-ask");
       if (overflow) chip(`자리 부족 +${overflow}명 (표시 안 됨)`, "overflow");
       f.cnt.textContent = f.kind === "ceo" ? `${list.length}명 · 질문 ${questions.length}` : `${list.length}명`;
     }
     firstSnapshot = false;
     updateAskPill(questions);
+    updateApPill(pendingApprovals(d));
 
     // 하루 끝 → 방마다 차례로 불 끄기
     const ended = !!d.dayEnded;
@@ -555,6 +577,7 @@
   // ------------------------------------------------------------ 사람 상세 (눌러서 보기)
   function showInfo(root) {
     if (root.dataset.qid) return openQbox(root.dataset.qid); // 줄 선 사람을 누르면 바로 답하기
+    if (root.dataset.aid) return openApproval(root.dataset.aid); // 결재 대기 → 바로 자료 보기
     const lines = (root.title || "").split("\n");
     $("#infoName").textContent = lines[0] || "";
     const list = $("#infoList");
@@ -703,6 +726,168 @@
     // 시연 모드에서만: 답을 받은 직원이 줄에서 빠지는 모습을 보여 준다 (실제 모드는 직원 쪽 기록이 바뀔 때 빠짐)
     if (DEMO && DEMO.answer) ids.forEach((id) => DEMO.answer(id));
   });
+
+  // ------------------------------------------------------------ 결재함 (시안·자료 확인 → 승인 / 수정 요청)
+  const decidedIds = new Set(); // 방금 결정한 결재 (다음 자료가 올 때까지 숨김)
+  function pendingApprovals(d) {
+    const list = d && Array.isArray(d.approvals) ? d.approvals : [];
+    return list.filter((x) => x && x.id != null && x.status === "pending" && !decidedIds.has(String(x.id)))
+      .sort((a, b) => (ms(a.submittedAt) ?? 0) - (ms(b.submittedAt) ?? 0));
+  }
+  const canDecide = () => !!(DEMO || (data && data.canApprove));
+  function updateApPill(list) {
+    $("#apPill").hidden = !list.length;
+    $("#apCount").textContent = list.length;
+  }
+  // 아주 작은 마크다운 → HTML (먼저 모두 이스케이프하고, 정해진 모양만 되살린다)
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function inline(t) {
+    return esc(t)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
+  }
+  function mdToHtml(md) {
+    const lines = String(md).replace(/\r/g, "").split("\n");
+    const out = [];
+    let i = 0;
+    while (i < lines.length) {
+      const l = lines[i];
+      if (!l.trim()) { i++; continue; }
+      let m;
+      if ((m = l.match(/^(#{1,4})\s+(.*)$/))) { const n = Math.min(4, m[1].length + 1); out.push(`<h${n}>${inline(m[2])}</h${n}>`); i++; continue; }
+      if (/^\s*\|.*\|\s*$/.test(l)) {
+        const rows = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(lines[i]); i++; }
+        const cells = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+        const body = rows.filter((r) => !/^\s*\|[\s:|-]+\|\s*$/.test(r));
+        const [head, ...rest] = body;
+        out.push('<div class="md-table"><table><thead><tr>' + cells(head).map((c) => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>" +
+          rest.map((r) => "<tr>" + cells(r).map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table></div>");
+        continue;
+      }
+      if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+        const ordered = /^\s*\d+\./.test(l);
+        const items = [];
+        while (i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, "")); i++; }
+        out.push(`<${ordered ? "ol" : "ul"}>` + items.map((t) => `<li>${inline(t.replace(/^\[[ xX]\]\s*/, ""))}</li>`).join("") + `</${ordered ? "ol" : "ul"}>`);
+        continue;
+      }
+      if (/^>\s?/.test(l)) {
+        const q = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) { q.push(lines[i].replace(/^>\s?/, "")); i++; }
+        out.push(`<blockquote>${q.map(inline).join("<br>")}</blockquote>`);
+        continue;
+      }
+      const para = [];
+      while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*\||\s*([-*]|\d+\.)\s|>)/.test(lines[i])) { para.push(lines[i]); i++; }
+      out.push(`<p>${para.map(inline).join("<br>")}</p>`);
+    }
+    return out.join("");
+  }
+  const apDlg = $("#approvals");
+  let apCurrent = null;
+  function renderApList() {
+    const list = pendingApprovals(data);
+    const box = $("#apList");
+    box.textContent = "";
+    $("#apEmpty").hidden = list.length > 0;
+    const nowSrv = ms(data && data.updatedAt) ?? Date.now();
+    for (const ap of list) {
+      const li = el("li");
+      const b = el("button", "ap-item");
+      b.type = "button";
+      const sess = (data.sessions || []).find((x) => String(x.id) === String(ap.sessionId));
+      const who2 = sess ? who(sess).label : ap.from;
+      const t = ms(ap.submittedAt);
+      b.append(el("b", null, ap.title), el("span", "ap-meta", `${who2} · 자료 ${(ap.files || []).length}개${t != null ? ` · ${fmtMin(Math.max(0, (nowSrv - t) / 60000))} 전` : ""}`));
+      b.addEventListener("click", () => openApproval(ap.id));
+      li.append(b);
+      box.append(li);
+    }
+  }
+  async function loadFile(ap, p) {
+    const wrap = el("section", "ap-file");
+    wrap.append(el("h3", "ap-file-name", p));
+    const body = el("div", "ap-doc");
+    wrap.append(body);
+    const ext = (p.split(".").pop() || "").toLowerCase();
+    if (ap.preview && ap.preview[p] != null) { body.innerHTML = mdToHtml(ap.preview[p]); return wrap; }
+    if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
+      const img = el("img"); img.alt = p; img.loading = "lazy"; img.src = "api/file?path=" + encodeURIComponent(p);
+      body.append(img); return wrap;
+    }
+    try {
+      const r = await fetch("api/file?path=" + encodeURIComponent(p), { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      body.innerHTML = mdToHtml(await r.text());
+    } catch (e) {
+      body.append(el("p", "err", `자료를 열지 못했습니다(${e.message}). 이 화면이 사무실 서버(serve.mjs)에서 열렸는지 확인해 주세요.`));
+    }
+    return wrap;
+  }
+  async function openApproval(id) {
+    if (!data) return;
+    const ap = (data.approvals || []).find((x) => String(x.id) === String(id));
+    if (!ap) return;
+    apCurrent = ap;
+    apDlg.classList.add("detail");
+    $("#apTitle").textContent = ap.title;
+    const apSess = (data.sessions || []).find((x) => String(x.id) === String(ap.sessionId));
+    const apWho = apSess ? who(apSess) : { label: ap.from, title: null };
+    $("#apFrom").textContent = `${apWho.label}${apWho.title && apWho.title !== apWho.label ? ` (${apWho.title})` : ""} 올림 · ${new Date(ms(ap.submittedAt) ?? Date.now()).toLocaleString("ko-KR")}`;
+    $("#apNoteIn").value = ""; $("#apMsg").textContent = ""; $("#apErr").textContent = "";
+    $("#apApprove").disabled = $("#apRevise").disabled = !canDecide();
+    $("#apCantDecide").hidden = canDecide();
+    const files = $("#apFiles");
+    files.textContent = "";
+    files.append(el("p", "ap-loading", "자료를 여는 중…"));
+    if ($("#info").open) $("#info").close();
+    if (!apDlg.open) apDlg.showModal();
+    const parts = await Promise.all((ap.files || []).map((p) => loadFile(ap, p)));
+    files.textContent = "";
+    parts.forEach((x) => files.append(x));
+    if (!parts.length) files.append(el("p", null, "첨부된 자료가 없습니다."));
+  }
+  function openApList() {
+    if (!data) return;
+    apDlg.classList.remove("detail");
+    renderApList();
+    if (!apDlg.open) apDlg.showModal();
+  }
+  async function decide(decision) {
+    if (!apCurrent) return;
+    const note = $("#apNoteIn").value.trim();
+    if (decision === "revise" && !note) { $("#apErr").textContent = "무엇을 고칠지 적어 주세요."; $("#apNoteIn").focus(); return; }
+    $("#apErr").textContent = "";
+    const btns = [$("#apApprove"), $("#apRevise")];
+    btns.forEach((b) => (b.disabled = true));
+    try {
+      if (DEMO) DEMO.decide(apCurrent.id, decision, note);
+      else {
+        const r = await fetch("api/decide", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: apCurrent.id, decision, note }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+      }
+    } catch (e) {
+      $("#apErr").textContent = `보내지 못했습니다(${e.message}).`;
+      btns.forEach((b) => (b.disabled = false));
+      return;
+    }
+    decidedIds.add(String(apCurrent.id));
+    btns.forEach((b) => (b.disabled = false));
+    const done = decision === "approve" ? "승인했습니다." : "수정 요청을 보냈습니다.";
+    apCurrent = null;
+    if (data) apply(data);
+    openApList();
+    $("#apListMsg").textContent = `${done} 직원이 이어서 진행합니다.${DEMO ? " (시연)" : ""}`;
+  }
+  $("#apPill").addEventListener("click", () => { $("#apListMsg").textContent = ""; openApList(); });
+  $("#apClose").addEventListener("click", () => apDlg.close());
+  $("#apBack").addEventListener("click", () => { $("#apListMsg").textContent = ""; openApList(); });
+  $("#apApprove").addEventListener("click", () => decide("approve"));
+  $("#apRevise").addEventListener("click", () => decide("revise"));
 
   // ------------------------------------------------------------ 사이트 연결
   // 직원마다 참고할 사이트를 묶어 둔다. 업무 지시서에 함께 들어가서 직원이 그 사이트를 읽고 쓴다.
