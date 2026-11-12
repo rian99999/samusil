@@ -18,14 +18,21 @@ tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, Skill
 4. 의료·금융 효과 단정, 경쟁사 비방, 과장 표현("무조건", "100%")은 쓰지 않는다.
 
 ## 스킬 사용 (필수 — 가장 좋은 결과를 내기 위해)
-일을 시작할 때 Skill 도구로 아래 스킬을 **순서대로 불러서** 그 지침을 따른다.
+일을 시작할 때 Skill 도구로 아래 스킬을 **순서대로 불러서** 그 지침을 따른다. (2026.11 설치 확인한 스킬만 적었다.)
 1. `rian-brand` — 언제나 첫 번째. 브랜드 규칙·사실 자료·자동 검사 순서.
-2. `marketing:seo-audit` — 키워드 고르기·제목·소제목 구조를 검색에 맞게 점검.
-3. `marketing:draft-content` (없으면 `marketing:content-creation`) — 블로그 본문·플레이스 소식 초안 구조.
-4. `brand-voice:brand-voice-enforcement` — 가이드 문서로 `brand/RIAN.md`를 주고 말투를 맞춤.
+2. `marketing:seo-audit` — **키워드 조사 부분만**(audit type: keyword research). 지역+업종 키워드 후보, 소제목 구조, 검색 의도. SEO 도구가 없으니 검색량은 "추정"으로만.
+3. `marketing:draft-content` — 블로그 본문·플레이스 소식 초안 (채널별 형식).
+4. `brand-voice:brand-voice-enforcement` — `.claude/brand-voice-guidelines.md`(= RIAN.md)로 말투 맞춤, strict.
 5. `design:ux-copy` — 제목·예약 안내 문구를 짧고 분명하게.
-- 목록의 스킬이 이 환경에 없으면 건너뛰고, 결과 파일 맨 위 `사용한 스킬:` 줄에 "없음: <이름>"으로 적는다. 있는 척하지 않는다.
-- 다른 스킬의 일반 지침과 RIAN 규칙이 부딪히면 **RIAN 규칙(brand/RIAN.md)이 이긴다.**
+6. (참고 사이트에 `[경쟁사]`가 연결된 경우만) `marketing:competitive-brief` — 차이점 메모용, 글에 경쟁사 이름·문장 금지.
+
+스킬을 쓸 때 지킬 것:
+- 스킬이 "사용자에게 먼저 물어보라"고 하면 **묻지 말고** brief.md·answers.md·`brand/RIAN.md`·`brand/facts.md`에서 답을 찾아 넣는다. 없으면 `[확인 필요: …]`로 두고 계속한다(꼭 사장님 결정이 필요하면 `office.mjs ask`).
+- 스킬이 브랜드 가이드를 찾으면 `brand/RIAN.md`를 준다(`.claude/brand-voice-guidelines.md`도 같은 파일).
+- 스킬의 일반 예시·영어권 문구(무료 체험, 할인 압박, 과장 CTA 등)보다 **RIAN 규칙이 이긴다.**
+- 연결 안 된 도구(SEO 도구 Ahrefs 등)를 전제한 단계는 건너뛰고, 검색량·순위 같은 숫자를 지어내지 않는다.
+- 목록의 스킬이 없으면 건너뛰고 결과 파일 맨 위 `사용한 스킬:` 줄에 "없음: <이름>"으로 적는다. 있는 척하지 않는다.
+- **쓰지 않는 스킬:** `brand-guidelines`(Anthropic 브랜드 색·서체라 RIAN 과 충돌), `theme-factory`, `algorithmic-art`.
 - 끝내기 전 `node tools/brand-check.mjs <내 결과 파일>` → **오류 0**이어야 끝낼 수 있다.
 
 ## 브랜드 (RIAN) — 쓰기 전에 반드시
