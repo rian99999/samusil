@@ -342,7 +342,7 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 6px; border-r
 .task-form { display: grid; gap: 6px; padding: 16px 20px 20px; }
 .task-form label { font-size: 14px; font-weight: 700; margin-top: 8px; }
 .task-form .req { font-size: 11px; color: var(--c-block); background: var(--c-block-bg); padding: 1px 6px; border-radius: 999px; margin-left: 4px; }
-.task-form input:not([type=checkbox]), .task-form textarea, .task-result textarea {
+.task-form input:not([type=checkbox]):not([type=radio]), .task-form textarea, .task-result textarea {
   width: 100%; font: inherit; font-size: 16px; /* 16px 미만이면 아이폰이 화면을 확대함 */
   padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
 }
@@ -603,7 +603,7 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
 .copy-msg { color: var(--ink); }
 .err { color: var(--ink); background: var(--tint); padding: 6px 10px; }
 .task-form .req { color: var(--muted); background: var(--surface-2); }
-.task-form input:not([type=checkbox]), .task-form textarea, .task-result textarea, .q-card textarea, .q-result textarea,
+.task-form input:not([type=checkbox]):not([type=radio]), .task-form textarea, .task-result textarea, .q-card textarea, .q-result textarea,
 .ros-main input, .site-form select { border-radius: 0; background: var(--surface); border-color: var(--line); }
 .task-form input:focus, .task-form textarea:focus, .q-card textarea:focus, .ros-main input:focus { outline: 2px solid var(--ink); }
 .task-form .check { border-radius: 0; }
@@ -683,6 +683,47 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
   .approvals { width: 100vw; }
 }
 .ap-pill:has(+ .ask-pill[hidden]) { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+
+/* 업무 종류 고르기(일반 업무 / SNS 홍보 글) */
+.task-form .kind-seg { margin-top: 0; }
+.task-form .kind-part { display: grid; gap: 6px; }
+.task-form .kind-part[hidden] { display: none; }
+.task-form .check input[type=radio] { width: 20px; height: 20px; accent-color: var(--ink); }
+
+/* 일반 업무: 맡길 곳 고르기 */
+.task-form fieldset.assign { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.assign-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.assign-tabs .check { justify-content: center; text-align: center; font-size: 13.5px; }
+.assign-tabs .check:has(input:checked) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.assign-help { margin: 0; }
+.assign-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.assign-list .check { flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
+.assign-list .check small { flex-basis: 100%; font-size: 12px; font-weight: 400; color: var(--muted); padding-left: 28px; }
+@media (max-width: 420px) { .assign-tabs { grid-template-columns: 1fr; } .assign-list { grid-template-columns: 1fr; } }
+
+/* 질문함: 진행 중인 시안 그림 · 진행 단계 · A/B 고르기 */
+.q-visual { display: grid; gap: 8px; }
+.q-progress { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; font-size: 12.5px; }
+.q-progress li { padding: 3px 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+.q-progress li.is-done { color: var(--ink); }
+.q-progress li.is-now { background: var(--ink); border-color: var(--ink); color: var(--surface); font-weight: 700; }
+.q-progress li.is-todo { border-style: dashed; }
+.q-figure { margin: 0; display: grid; gap: 4px; }
+.q-figure figcaption { font-size: 12.5px; color: var(--muted); }
+.q-frame { position: relative; border: 1px solid var(--line); background: var(--surface-2); line-height: 0; }
+.q-frame img { display: block; width: 100%; height: auto; max-height: 360px; object-fit: contain; }
+.q-pin { position: absolute; transform: translate(-50%, -50%); min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: var(--surface);
+  font: 700 13px/26px -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; box-shadow: 0 0 0 2px var(--surface); }
+.q-opts { display: grid; gap: 6px; }
+.q-opt { display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 2px 10px; text-align: left; cursor: pointer; min-height: 48px; padding: 8px 12px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 14.5px; font-weight: 600; }
+.q-opt small { grid-column: 2; font-size: 12px; font-weight: 400; color: var(--muted); }
+.q-opt-key { grid-row: span 2; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: var(--surface); font-size: 13px; line-height: 26px; text-align: center; }
+.q-opt[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--surface-2); }
+
+.q-zoom { display: block; cursor: zoom-in; }
+.q-pin { pointer-events: none; }
+.q-frame.is-big img { max-height: none; }
 
 /* 업무 지시 바로 보내기 */
 .send-box { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--ink); background: var(--bg); }

@@ -33,9 +33,28 @@
       mk("insta", "릴스 대본", "idle", 20, "s6", 4),            // 커피
       mk("threads", "스레드 담당", "idle", 40, null, 14, "threads-marketer"),       // 졸음
     ];
+    const card = (x, label, state) => {
+      const fill = state === "done" ? "#efeaf2" : state === "now" ? "#ffffff" : "#f7f7f7";
+      const dash = state === "todo" ? ' stroke-dasharray="6 5"' : "";
+      return `<g><rect x="${x}" y="20" width="150" height="190" fill="${fill}" stroke="#221f26" stroke-width="2"${dash}/>` +
+        `<text x="${x + 75}" y="230" text-anchor="middle" font-size="14" fill="#221f26">${label}</text>` +
+        (state === "done" ? `<rect x="${x + 20}" y="50" width="110" height="14" fill="#c9bfd0"/><rect x="${x + 20}" y="74" width="80" height="10" fill="#d9d2de"/>` : "") +
+        (state === "now" ? `<rect x="${x + 20}" y="50" width="110" height="18" fill="#3e6fd8"/><rect x="${x + 20}" y="80" width="110" height="60" fill="none" stroke="#9a949e" stroke-dasharray="4 4"/>` : "") + "</g>";
+    };
+    const DEMO_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 250" font-family="sans-serif"><rect width="680" height="250" fill="#fafafa"/>` +
+      card(10, "1 표지", "done") + card(180, "2 원인", "done") + card(350, "3 고르는 법", "now") + card(520, "4 예약 안내", "todo") + "</svg>");
     const questions = [
       { id: "q" + (++qseq), sessionId: "s6", from: "인스타 담당", text: "브랜드 해시태그를 새로 만들까요, 기존 것을 쓸까요?", askedAt: iso(now() - 12 * MIN) },
-      { id: "q" + (++qseq), sessionId: "s2", from: "디자이너", text: "메인 색을 파랑으로 확정해도 될까요?", askedAt: iso(now() - 4 * MIN) },
+      {
+        id: "q" + (++qseq), sessionId: "s2", from: "디자이너", text: "3번 카드 제목 색을 어떻게 할까요?", askedAt: iso(now() - 4 * MIN),
+        progress: { done: ["1 표지", "2 원인"], todo: ["3 고르는 법", "4 예약 안내"] },
+        visual: { src: DEMO_SVG, title: "카드뉴스 시안 · 3번 카드 작업 중", pins: [{ key: "A", x: 63, y: 20 }, { key: "B", x: 63, y: 50 }] },
+        options: [
+          { key: "A", label: "제목을 파랑으로", where: "3번 카드 맨 위 제목 줄" },
+          { key: "B", label: "제목은 검정, 비교 칩만 색", where: "3번 카드 가운데 칩 자리" },
+        ],
+      },
     ];
     // 시연용 결재: 실제 파일 대신 내용을 함께 들고 있다
     const approvals = [{

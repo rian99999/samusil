@@ -618,6 +618,49 @@
     const i = sess ? who(sess) : { label: q.from || "직원", title: null };
     return i.title && i.title !== i.label ? `${i.label} · ${i.title}` : i.label;
   }
+  // 질문에 붙은 시각 자료(2026-11-14): 진행 중인 시안 그림 + 고를 자리(A·B 핀) + 진행 단계.
+  // q.visual = { src, title, pins: [{ key, x, y }] }  (x·y 는 그림 왼쪽 위 기준 % )
+  // q.options = [{ key, label, where }]   q.progress = { done: [..], todo: [..] }
+  const visualSrc = (src) => (/^(https?:|data:image\/)/i.test(src) ? src : "api/file?path=" + encodeURIComponent(src));
+  const optText = (o) => `${o.key}안: ${o.label}${o.where ? ` (${o.where})` : ""}`;
+  function qVisual(q) {
+    const box = el("div", "q-visual");
+    const pr = q.progress && typeof q.progress === "object" ? q.progress : null;
+    if (pr && ((pr.done || []).length || (pr.todo || []).length)) {
+      const strip = el("ol", "q-progress");
+      strip.setAttribute("aria-label", "진행 상황");
+      for (const d of pr.done || []) strip.append(el("li", "is-done", "✓ " + d));
+      (pr.todo || []).forEach((d, i) => strip.append(el("li", i === 0 ? "is-now" : "is-todo", (i === 0 ? "▶ " : "") + d)));
+      box.append(strip);
+    }
+    const v = q.visual && typeof q.visual === "object" && typeof q.visual.src === "string" ? q.visual : null;
+    if (v) {
+      const fig = el("figure", "q-figure");
+      const frame = el("div", "q-frame");
+      const img = el("img");
+      img.src = visualSrc(v.src); img.alt = v.title || "진행 중인 시안"; img.loading = "lazy";
+      img.addEventListener("error", () => { frame.replaceWith(el("p", "err", "그림을 열지 못했습니다. 사무실 서버(serve.mjs)로 연 화면에서 다시 봐 주세요.")); });
+      const big = el("a", "q-zoom");
+      big.href = img.src; big.target = "_blank"; big.rel = "noopener";
+      big.setAttribute("aria-label", "그림 크게 보기");
+      big.append(img);
+      // data: 그림은 새 창으로 못 여니 그 자리에서 크게 펼친다
+      big.addEventListener("click", (e) => { if (/^data:/i.test(img.src)) { e.preventDefault(); frame.classList.toggle("is-big"); } });
+      frame.append(big);
+      for (const p of Array.isArray(v.pins) ? v.pins : []) {
+        const x = Math.min(100, Math.max(0, +p.x || 0)), y = Math.min(100, Math.max(0, +p.y || 0));
+        const pin = el("span", "q-pin", String(p.key || "?").slice(0, 2));
+        pin.style.left = x + "%"; pin.style.top = y + "%";
+        pin.setAttribute("aria-hidden", "true");
+        frame.append(pin);
+      }
+      fig.append(frame);
+      fig.append(el("figcaption", null, (v.title ? v.title + " · " : "") + "누르면 크게 보기"));
+      box.append(fig);
+    }
+    return box.childNodes.length ? box : null;
+  }
+
   function updateAskPill(qs) {
     const pill = $("#askPill");
     pill.hidden = !qs.length;
@@ -650,7 +693,28 @@
         b.addEventListener("click", () => { ta.value = qt; answers[q.id] = qt; saveAnswers(); $("#qErr").textContent = ""; ta.focus(); });
         quick.append(b);
       }
-      li.append(head, text, ta, quick);
+      // 고를 안(A·B…)이 있으면 그림의 핀과 같은 글자로 버튼을 만든다
+      const opts = (Array.isArray(q.options) ? q.options : []).filter((o) => o && o.key && o.label);
+      let optBox = null;
+      if (opts.length) {
+        optBox = el("div", "q-opts");
+        optBox.setAttribute("role", "group");
+        optBox.setAttribute("aria-label", "고를 안");
+        for (const o of opts) {
+          const b = el("button", "q-opt");
+          b.type = "button";
+          b.append(el("b", "q-opt-key", String(o.key).slice(0, 2)), el("span", null, o.label));
+          if (o.where) b.append(el("small", null, o.where));
+          b.setAttribute("aria-pressed", String(ta.value.startsWith(String(o.key) + "안:")));
+          b.addEventListener("click", () => {
+            ta.value = optText(o); answers[q.id] = ta.value; saveAnswers(); $("#qErr").textContent = "";
+            optBox.querySelectorAll(".q-opt").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          });
+          optBox.append(b);
+        }
+      }
+      const vis = qVisual(q);
+      li.append(head, ...(vis ? [vis] : []), text, ...(optBox ? [optBox] : []), ta, quick);
       list.append(li);
       if (String(q.id) === String(focusId)) requestAnimationFrame(() => { li.scrollIntoView({ block: "nearest" }); ta.focus(); });
     }
@@ -905,7 +969,9 @@
   function saveSites(list) { sitesLocal = list; try { localStorage.setItem(SITES_KEY, JSON.stringify(list)); } catch (_) {} }
   function roleName(role) { if (role === "*") return "모든 직원"; const r = roleInfo(role); return r ? (r.person ? `${r.person}(${r.title})` : r.title) : role; }
   function sitesForOrder(channels) {
-    const roles = new Set(["chief-reviewer", ...channels.map((c) => CHANNEL_ROLE[c]).filter(Boolean)]);
+    return sitesForRoles(new Set(["chief-reviewer", ...channels.map((c) => CHANNEL_ROLE[c]).filter(Boolean)]));
+  }
+  function sitesForRoles(roles) {
     const pick = siteList().filter((x) => x.roles.includes("*") || x.roles.some((r) => roles.has(r)));
     if (!pick.length) return [];
     return ["참고 사이트:", ...pick.map((x) => {
@@ -1047,16 +1113,85 @@
   // ------------------------------------------------------------ 업무 맡기기 (지시서 만들기 → 복사)
   const task = $("#task"), form = $("#taskForm");
   const DRAFT = "office-task-draft";
-  const FIELDS = ["tTopic", "tTarget", "tMessage", "tFacts", "tBan"];
+  const FIELDS = ["tTopic", "tTarget", "tMessage", "tFacts", "tBan", "gWork", "gResult", "gDue", "gInfo", "gBan"];
+  // 일의 종류: 일반 업무 / SNS 홍보 글. 고른 쪽 칸만 보인다
+  const kindOf = () => (form.querySelector("input[name=kind]:checked") || {}).value || "general";
+  function showKind() {
+    const k = kindOf();
+    form.querySelectorAll(".kind-part").forEach((p) => (p.hidden = p.dataset.kind !== k));
+  }
+  form.querySelectorAll("input[name=kind]").forEach((r) => r.addEventListener("change", showKind));
+
+  // 일반 업무: 맡길 곳 고르기. 실장이 알아서 / 파트(직원)로 / 채널·연결한 사이트로
+  const amodeOf = () => (form.querySelector("input[name=amode]:checked") || {}).value || "auto";
+  const CHANNELS = Object.keys(CHANNEL_ROLE).filter((c) => c !== "디자인");
+  function assignOptions(mode) {
+    if (mode === "part") {
+      return roleKeys().map((r) => ({ value: "role:" + r, label: roleName(r), roles: [r] }));
+    }
+    if (mode === "channel") {
+      const ch = CHANNELS.map((c) => ({ value: "ch:" + c, label: c, sub: roleName(CHANNEL_ROLE[c]), roles: [CHANNEL_ROLE[c]] }));
+      const sites = siteList().map((x) => ({
+        value: "site:" + x.id, label: x.name, sub: PURPOSES[x.purpose] + " · " + (x.roles.includes("*") ? "모든 직원" : x.roles.map(roleName).join(", ")),
+        roles: x.roles.includes("*") ? ["chief-reviewer"] : x.roles, site: x,
+      }));
+      return [...ch, ...sites];
+    }
+    return [];
+  }
+  const ASSIGN_HELP = {
+    auto: "총괄 실장이 할 일을 보고 맞는 직원에게 나눠 맡깁니다.",
+    part: "일할 직원(파트)을 고르세요. 여러 명 고르면 함께 합니다.",
+    channel: "어느 채널·사이트 일인지 고르세요. 그 채널 담당 직원이 맡고, 고른 사이트 주소가 지시서에 들어갑니다.",
+  };
+  let assignPicked = [];
+  function renderAssign() {
+    const mode = amodeOf();
+    $("#assignHelp").textContent = ASSIGN_HELP[mode];
+    const box = $("#assignList");
+    box.textContent = "";
+    const opts = assignOptions(mode);
+    if (mode === "channel" && !siteList().length) $("#assignHelp").textContent += " (사이트 연결에서 주소를 넣으면 여기에도 나옵니다.)";
+    for (const o of opts) {
+      const lab = el("label", "check");
+      const inp = document.createElement("input");
+      inp.type = "checkbox"; inp.name = "assign"; inp.value = o.value; inp.checked = assignPicked.includes(o.value);
+      lab.append(inp, document.createTextNode(" " + o.label));
+      if (o.sub) lab.append(el("small", null, o.sub));
+      box.append(lab);
+    }
+    box.hidden = !opts.length;
+    $("#assignErr").hidden = true;
+  }
+  form.querySelectorAll("input[name=amode]").forEach((r) => r.addEventListener("change", () => { assignPicked = []; renderAssign(); saveDraft(); }));
+  $("#assignList").addEventListener("change", () => { assignPicked = [...form.querySelectorAll("input[name=assign]:checked")].map((c) => c.value); });
+  /** 지시서에 넣을 담당 줄과 참고 사이트 */
+  function assignLines() {
+    const mode = amodeOf();
+    if (mode === "auto") return { lines: ["담당: 총괄 실장이 정함"], roles: new Set(["chief-reviewer"]) };
+    const picked = assignOptions(mode).filter((o) => assignPicked.includes(o.value));
+    const roles = new Set(["chief-reviewer", ...picked.flatMap((o) => o.roles)]);
+    const people = [...new Set(picked.flatMap((o) => o.roles))].map(roleName);
+    const lines = [`담당: ${people.join(", ")}`];
+    if (mode === "channel") {
+      lines.push(`대상 채널·사이트: ${picked.map((o) => (o.site ? `${o.label} ${o.site.url}` : o.label)).join(", ")}`);
+    }
+    return { lines, roles };
+  }
   function loadDraft() {
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT) || "{}");
       for (const id of FIELDS) if (d[id] != null) $("#" + id).value = d[id];
       if (Array.isArray(d.ch)) form.querySelectorAll("input[name=ch]").forEach((c) => (c.checked = d.ch.includes(c.value)));
+      if (d.kind) form.querySelectorAll("input[name=kind]").forEach((r) => (r.checked = r.value === d.kind));
+      if (d.amode) form.querySelectorAll("input[name=amode]").forEach((r) => (r.checked = r.value === d.amode));
+      if (Array.isArray(d.assign)) assignPicked = d.assign.map(String);
     } catch (_) {}
+    showKind();
+    renderAssign();
   }
   function saveDraft() {
-    const d = { ch: [...form.querySelectorAll("input[name=ch]:checked")].map((c) => c.value) };
+    const d = { kind: kindOf(), amode: amodeOf(), assign: assignPicked, ch: [...form.querySelectorAll("input[name=ch]:checked")].map((c) => c.value) };
     for (const id of FIELDS) d[id] = $("#" + id).value;
     try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch (_) {}
   }
@@ -1072,15 +1207,41 @@
   form.addEventListener("input", saveDraft);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
+    const v = (id) => $("#" + id).value.trim() || "(없음)";
+    if (kindOf() === "general") {
+      if (!$("#gWork").value.trim()) { $("#gWorkErr").hidden = false; $("#gWork").focus(); return; }
+      $("#gWorkErr").hidden = true;
+      if (amodeOf() !== "auto" && !assignPicked.length) { $("#assignErr").hidden = false; return; }
+      const asg = assignLines();
+      // 일반 업무: SNS 채널 없이 총괄 실장이 맞는 직원에게 나눠 맡긴다
+      $("#taskOut").value = [
+        "/office-run",
+        "[업무 지시서 · 일반 업무]",
+        amodeOf() === "auto"
+          ? "업무 종류: 일반 업무 (SNS 글이 아님. 채널별 글을 만들지 말고, 총괄 실장이 할 일에 맞는 직원을 정해 맡긴 뒤 결과를 보고)"
+          : "업무 종류: 일반 업무 (SNS 글이 아님. 아래 담당 직원만 일하고, 총괄 실장이 결과를 확인해 보고)",
+        ...asg.lines,
+        `할 일: ${$("#gWork").value.trim()}`,
+        `결과물 모양: ${v("gResult")}`,
+        `기한: ${v("gDue")}`,
+        `참고 자료: ${v("gInfo")}`,
+        `금지할 것: ${v("gBan")}`,
+        "밖으로 보내기·올리기·결제·삭제는 하지 말고, 필요하면 대표에게 먼저 묻기",
+        ...sitesForRoles(asg.roles),
+      ].join("\n");
+      task.classList.add("done");
+      setupSendBox();
+      saveDraft();
+      return;
+    }
     const ch = [...form.querySelectorAll("input[name=ch]:checked")].map((c) => c.value);
     if (!$("#tTopic").value.trim()) { $("#topicErr").hidden = false; $("#tTopic").focus(); return; }
     $("#topicErr").hidden = true;
     if (!ch.length) { $("#chErr").hidden = false; return; }
     $("#chErr").hidden = true;
-    const v = (id) => $("#" + id).value.trim() || "(없음)";
     const text = [
       "/office-run",
-      "[업무 지시서]",
+      "[업무 지시서 · SNS 홍보 글]",
       `주제: ${$("#tTopic").value.trim()}`,
       `대상 고객: ${v("tTarget")}`,
       `핵심 메시지: ${v("tMessage")}`,
@@ -1151,6 +1312,18 @@
       btn.disabled = false; btn.textContent = "Claude에 바로 보내기";
     }
   });
+  function clearTask() {
+    for (const id of FIELDS) $("#" + id).value = "";
+    assignPicked = [];
+    renderAssign();
+    ["topicErr", "gWorkErr", "chErr"].forEach((id) => { const e = $("#" + id); if (e) e.hidden = true; });
+    task.classList.remove("done");
+    $("#copyMsg").textContent = "";
+    saveDraft();
+    (kindOf() === "general" ? $("#gWork") : $("#tTopic")).focus();
+  }
+  $("#taskClear").addEventListener("click", clearTask);
+  $("#taskNew").addEventListener("click", clearTask);
   $("#copyBtn").addEventListener("click", async () => {
     const out = $("#taskOut");
     try {
