@@ -266,6 +266,12 @@
       </ol>
       <label for="taskOut" class="sr">만들어진 지시서</label>
       <textarea id="taskOut" rows="9" readonly></textarea>
+      <div id="sendBox" class="send-box" hidden>
+        <label for="taskPin" id="taskPinLabel">사무실 비밀번호 <span class="ap-opt">(serve.mjs 를 켤 때 정한 번호, 이 기기에 기억됨)</span></label>
+        <input id="taskPin" type="password" inputmode="numeric" autocomplete="off" maxlength="40">
+        <button id="taskSend" class="primary wide" type="button">Claude에 바로 보내기</button>
+        <p id="sendMsg" class="copy-msg" role="status" aria-live="polite"></p>
+      </div>
       <p id="copyMsg" class="copy-msg" role="status" aria-live="polite"></p>
       <div class="row">
         <button id="taskBack" class="ghost" type="button">고치기</button>
@@ -339,7 +345,7 @@
         </li>
         <li>
           <h3>휴대폰으로 일 시키기</h3>
-          <p>아래 <b>업무 맡기기</b>를 누르고 빈칸을 채운 뒤 <b>지시서 만들기 → 복사하기</b>. Claude 앱의 samusil 대화에 붙여넣고 보내면 직원들이 일을 시작합니다. 질문이 생기면 그 대화에서 묻습니다.</p>
+          <p><b>업무 맡기기</b>에서 빈칸을 채우고 <b>지시서 만들기 → Claude에 바로 보내기</b>. 기다리고 있는 Claude 대화(<code>/office-watch</code> 를 켜 둔 대화)가 바로 받아 직원들에게 일을 나눠 줍니다. 처음 한 번은 사무실 비밀번호를 넣습니다. 바로 보내기가 안 되는 화면에서는 <b>복사하기</b> 후 Claude 대화에 붙여넣습니다.</p>
           <p>휴대폰에서는 위쪽 층 이름을 눌러 층을 옮기고, 사무실 그림은 <b>좌우로 밀어서</b> 봅니다.</p>
         </li>
         <li>

@@ -80,10 +80,10 @@
         if (s && s.state !== next) { s.state = next; s.stateSince = iso(now()); }
       }
     }
-    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })));
+    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })));
     return {
       tick, snapshot, spawn, ask,
-      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })) : null; },
+      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })) : null; },
       setDayEnded(v) { dayEnded = v; },
       decide(id, decision, note) { const a = approvals.find((x) => x.id === id); if (a && a.status === "pending") { a.status = decision === "approve" ? "approved" : "revise"; a.decisionNote = note || ""; a.decidedAt = iso(now()); } },
       answer(id) { const i = questions.findIndex((q) => q.id === id); if (i >= 0) questions.splice(i, 1); },

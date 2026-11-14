@@ -683,3 +683,10 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
   .approvals { width: 100vw; }
 }
 .ap-pill:has(+ .ask-pill[hidden]) { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+
+/* 업무 지시 바로 보내기 */
+.send-box { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--ink); background: var(--bg); }
+.send-box[hidden], #taskPin[hidden], #taskPinLabel[hidden] { display: none !important; }
+.send-box label { font-size: 14px; font-weight: 700; }
+.send-box input { width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+#sendMsg:empty { display: none; }

@@ -12,6 +12,9 @@
 //   node tools/office.mjs decide <결재id> approve|revise [--note "의견"]  # 승인/수정 요청 (화면이 쓰는 명령)
 //   node tools/office.mjs wait-approval <결재id> [--timeout 분]           # 결정이 날 때까지 기다림
 //   node tools/office.mjs close <결재id>                                  # 결재 정리
+//   node tools/office.mjs task-add --text "/office-run …"     # 화면에서 보낸 업무 지시 받기 → 업무id
+//   node tools/office.mjs task-wait [--timeout 분]             # 새 업무가 올 때까지 기다렸다가 받아 감(JSON)
+//   node tools/office.mjs task-done <업무id> [--status done|failed] [--note "…"]
 //   node tools/office.mjs day end|start              # 하루 끝(소등) / 다시 시작
 //   node tools/office.mjs list | reset
 import fs from "node:fs";
@@ -144,6 +147,7 @@ switch (cmd) {
   case "list": {
     const s = load();
     for (const x of s.sessions) console.log(`${x.id}\t${x.floor}\t${x.state}\t${x.name}`);
+    for (const t of s.tasks || []) console.log(`${t.id}\t업무(${t.status})\t${t.text.split("\n").find((l) => /^(할 일|주제)/.test(l)) || t.text.split("\n")[0]}`);
     for (const a of s.approvals || []) console.log(`${a.id}\t결재(${a.status})\t${a.from}\t${a.title}${a.decisionNote ? "\t→ " + a.decisionNote : ""}`);
     for (const q of s.questions) console.log(`${q.id}\t${q.answer ? "답 옴" : "질문"}\t${q.from}\t${q.text}${q.answer ? "\t→ " + q.answer : ""}`);
     break;
@@ -196,6 +200,45 @@ switch (cmd) {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
     }
   }
+  case "task-add": {
+    const text = String(o.text || "").trim();
+    if (!text) die("업무 내용이 필요합니다 (--text)");
+    if (text.length > 8000) die("업무 지시가 너무 깁니다 (8000자 이하)");
+    const tid = withLock((s) => {
+      s.tasks = s.tasks || [];
+      const t = { id: "t" + (s.tseq = (s.tseq || 0) + 1), text, via: o.via || "screen", createdAt: nowIso(), status: "new" };
+      s.tasks.push(t);
+      s.tasks = s.tasks.slice(-30); // 오래된 기록은 30개까지만
+      return t.id;
+    });
+    console.log(tid);
+    break;
+  }
+  case "task-wait": {
+    // 새 업무를 하나 받아 'taken'으로 바꾸고 출력. 여러 대화가 기다려도 한 곳만 받는다(잠금 안에서 바꿈).
+    const limit = Date.now() + (Number(o.timeout) > 0 ? Number(o.timeout) : 120) * 60000;
+    for (;;) {
+      const got = withLock((s) => {
+        const t = (s.tasks || []).find((x) => x.status === "new");
+        if (t) { t.status = "taken"; t.takenAt = nowIso(); t.takenBy = o.by || "claude"; }
+        return t ? { ...t } : null;
+      });
+      if (got) { console.log(JSON.stringify({ status: "task", ...got })); process.exit(0); }
+      if (Date.now() > limit) { console.log(JSON.stringify({ status: "timeout" })); process.exit(2); }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
+    }
+  }
+  case "task-done": {
+    const st = o.status || "done";
+    if (!["done", "failed"].includes(st)) die("status 는 done|failed");
+    withLock((s) => {
+      const t = (s.tasks || []).find((x) => x.id === id);
+      if (!t) die("없는 업무: " + id);
+      t.status = st; t.doneAt = nowIso(); if (o.note) t.note = String(o.note).slice(0, 500);
+    });
+    console.log("업무 " + st + ": " + id);
+    break;
+  }
   case "close":
     withLock((s) => { s.approvals = (s.approvals || []).filter((x) => x.id !== id); });
     console.log("결재 정리: " + id);
@@ -205,5 +248,5 @@ switch (cmd) {
     console.log("초기화");
     break;
   default:
-    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 18).join("\n"));
+    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 21).join("\n"));
 }

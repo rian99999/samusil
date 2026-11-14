@@ -1092,6 +1092,64 @@
     $("#taskOut").value = text;
     task.classList.add("done");
     saveDraft();
+    setupSendBox();
+  });
+
+  // ------------------------------------------------------------ 업무 지시를 Claude 에 바로 보내기
+  // 실제 서버(serve.mjs --pin)면 /api/task 로 보내고, 대기 중인 Claude 대화(/office-watch)가 받아 시작한다.
+  const PIN_KEY = "office-pin";
+  let sentTask = null; // { id, at }
+  const canSendTask = () => !!(DEMO || (data && data.canSendTask));
+  function savedPin() { try { return localStorage.getItem(PIN_KEY) || ""; } catch (_) { return ""; } }
+  function setupSendBox() {
+    const box = $("#sendBox");
+    box.hidden = !canSendTask();
+    $("#copyBtn").className = canSendTask() ? "ghost" : "primary";
+    const needPin = !DEMO && !savedPin();
+    $("#taskPin").hidden = $("#taskPinLabel").hidden = !needPin;
+    $("#sendMsg").textContent = "";
+    $("#taskSend").disabled = false;
+    sentTask = null;
+  }
+  function taskStatusText() {
+    if (!sentTask) return "";
+    if (DEMO) return `보냈습니다 (${sentTask.id}). (시연: 실제 Claude 에는 가지 않습니다)`;
+    const t = ((data && data.tasks) || []).find((x) => x.id === sentTask.id);
+    if (!t) return `보냈습니다 (${sentTask.id}).`;
+    if (t.status === "taken") return `Claude 가 받아서 시작했습니다 (${t.id}). 진행은 사무실 화면에서 보입니다.`;
+    if (t.status === "done") return `끝났습니다 (${t.id}).${t.note ? " " + t.note : ""}`;
+    if (t.status === "failed") return `처리하지 못했습니다 (${t.id}).${t.note ? " " + t.note : ""}`;
+    const waited = (Date.now() - sentTask.at) / 1000;
+    return waited > 20
+      ? `보냈지만 아직 받는 Claude 가 없습니다 (${t.id}). Claude 대화에서 /office-watch 를 실행해 두면 바로 받아 갑니다.`
+      : `보냈습니다 (${t.id}). Claude 가 받으면 여기에 표시됩니다.`;
+  }
+  setInterval(() => { if (sentTask && task.open) $("#sendMsg").textContent = taskStatusText(); }, 1000);
+  $("#taskSend").addEventListener("click", async () => {
+    const text = $("#taskOut").value.trim();
+    if (!text) return;
+    const btn = $("#taskSend");
+    btn.disabled = true; btn.textContent = "보내는 중…";
+    try {
+      if (DEMO) {
+        sentTask = { id: "t" + Math.floor(Math.random() * 90 + 10), at: Date.now() };
+      } else {
+        const pin = $("#taskPin").hidden ? savedPin() : $("#taskPin").value.trim();
+        if (!pin) throw new Error("사무실 비밀번호를 적어 주세요");
+        const r = await fetch("api/task", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, pin }) });
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { try { localStorage.removeItem(PIN_KEY); } catch (_) {} $("#taskPin").hidden = $("#taskPinLabel").hidden = false; }
+        if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+        try { localStorage.setItem(PIN_KEY, pin); } catch (_) {}
+        $("#taskPin").value = ""; $("#taskPin").hidden = $("#taskPinLabel").hidden = true;
+        sentTask = { id: j.id, at: Date.now() };
+      }
+      $("#sendMsg").textContent = taskStatusText();
+      btn.textContent = "보냈습니다";
+    } catch (e) {
+      $("#sendMsg").textContent = `보내지 못했습니다: ${e.message}. 아래 '복사하기'로 대화에 붙여넣어도 됩니다.`;
+      btn.disabled = false; btn.textContent = "Claude에 바로 보내기";
+    }
   });
   $("#copyBtn").addEventListener("click", async () => {
     const out = $("#taskOut");

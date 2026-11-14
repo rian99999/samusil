@@ -9,11 +9,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
+import crypto from "node:crypto";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
 const i = process.argv.indexOf("--port");
 const PORT = i > 0 ? +process.argv[i + 1] : 8080;
+// 업무 지시를 화면에서 받으려면 사무실 비밀번호가 필요하다: --pin 1234 또는 OFFICE_PIN=1234
+const pi = process.argv.indexOf("--pin");
+const PIN = String(pi > 0 ? process.argv[pi + 1] : process.env.OFFICE_PIN || "");
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json" };
 const PUBLIC = new Set(["index.html", "app.js", "style.css", "sim.js", "assets/office.png", "assets/layout.json",
@@ -25,7 +29,8 @@ function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
   try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw e; }
-  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, canApprove: true, approvals: s.approvals || [], roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
+  return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, canApprove: true, canSendTask: !!PIN,
+    tasks: (s.tasks || []).slice(-10).map((t) => ({ id: t.id, status: t.status, createdAt: t.createdAt, takenAt: t.takenAt, doneAt: t.doneAt, note: t.note })), approvals: s.approvals || [], roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
 }
 
 // 화면의 질문함에서 '보내기' → office.mjs reply 로 기록 (잠금·검사는 office.mjs 가 한다)
@@ -67,6 +72,31 @@ function readJson(req, res, send, cb) {
   let body = "";
   req.on("data", (c) => { body += c; if (body.length > 50000) req.destroy(); });
   req.on("end", () => { let j; try { j = JSON.parse(body); } catch { return send(400, { error: "잘못된 JSON" }); } cb(j); });
+}
+// 비밀번호 틀림이 잦으면 잠시 막는다 (10분에 5번)
+const pinFails = [];
+function pinOk(given) {
+  const now = Date.now();
+  while (pinFails.length && now - pinFails[0] > 600000) pinFails.shift();
+  if (pinFails.length >= 5) return "locked";
+  const a = Buffer.from(String(given || "")), b = Buffer.from(PIN);
+  const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!ok) pinFails.push(now);
+  return ok ? "ok" : "bad";
+}
+function taskApi(req, res) {
+  const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  if (!PIN) return send(403, { error: "사무실 비밀번호가 설정되지 않아 업무를 받을 수 없습니다 (serve.mjs --pin 으로 실행)" });
+  readJson(req, res, send, async (j) => {
+    const r = pinOk(j.pin);
+    if (r === "locked") return send(429, { error: "비밀번호를 여러 번 틀려 10분 동안 막혔습니다" });
+    if (r !== "ok") return send(401, { error: "사무실 비밀번호가 맞지 않습니다" });
+    const text = String(j.text || "").trim();
+    if (!text || text.length > 8000) return send(400, { error: "업무 내용이 비었거나 너무 깁니다" });
+    const out = await new Promise((resolve) => execFile(process.execPath, [path.join(ROOT, "tools/office.mjs"), "task-add", "--text", text, "--via", "screen"],
+      { env: process.env, timeout: 10000 }, (err, stdout, stderr) => resolve(err ? { ok: false, error: (stderr || err.message).replace(/^오류: /, "").trim() } : { ok: true, id: stdout.trim() })));
+    send(out.ok ? 200 : 500, out);
+  });
 }
 function decideApi(req, res) {
   const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
@@ -115,6 +145,7 @@ http.createServer((req, res) => {
   }
   if (url.pathname === "/api/answer") return answerApi(req, res);
   if (url.pathname === "/api/decide") return decideApi(req, res);
+  if (url.pathname === "/api/task") return taskApi(req, res);
   if (url.pathname === "/api/file") return fileApi(url, res);
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
   if (!PUBLIC.has(rel)) { res.writeHead(404); return res.end("not found"); }
@@ -127,5 +158,6 @@ http.createServer((req, res) => {
   const { networkInterfaces } = await import("node:os");
   const ips = Object.values(networkInterfaces()).flat().filter((n) => n && n.family === "IPv4" && !n.internal).map((n) => n.address);
   console.log(`AI 사무실: http://localhost:${PORT}`);
+  console.log(PIN ? "업무 지시 받기: 켜짐 (사무실 비밀번호 설정됨)" : "업무 지시 받기: 꺼짐 (켜려면 --pin <비밀번호>)");
   for (const ip of ips) console.log(`같은 와이파이의 휴대폰에서: http://${ip}:${PORT}`);
 });
