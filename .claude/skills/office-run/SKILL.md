@@ -78,9 +78,11 @@ node tools/office.mjs start <팀>-T1-<작업> --role <팀원 역할> --name "<T1
 node tools/office.mjs submit director-<작업> --title "<주제> — <채널들>" \
   --file work/<작업>/naver.md --file work/<작업>/design.md --file reports/<작업>.md
 ```
-- 올린 파일만 화면에 보인다(`work/`·`reports/` 안의 .md·.txt·.png·.jpg·.webp). 그림 파일도 `--file`로 함께.
+- 올린 파일만 화면에 보인다(`work/`·`reports/` 안의 .md·.txt·.json·.png·.jpg·.webp). 그림 파일도 `--file`로 함께.
+- 게시본이 있으면 **반드시 함께** 올린다: `--file work/<작업>/post-instagram.json --file work/<작업>/post-threads.json` + 게시본이 가리키는 그림 파일 전부. 결재 때 파일 지문이 남고, 승인 뒤 한 글자라도 바뀌면 게시가 막힌다.
+- 결재를 올리면 사장님 휴대폰으로 알림이 간다(ntfy, office.secrets.json 설정 시). 이 대화에서도 PushNotification 도구가 있으면 "결재 a번호 대기: 제목"을 한 번 보낸다.
 - 결재 번호(a숫자)를 이 대화에 알리고 **백그라운드로** `node tools/office.mjs wait-approval <결재id> --timeout 240`.
-- `approved` → 7번 보고. `revise` → 의견을 answers.md 에 "결재 의견"으로 적고 **본부장부터** 다시: director [분배 수정이 필요하면 분배] → 해당 팀장 [재작업] → 팀원 → 팀장 → 본부장 [최종결재] → 새로 `submit`(이전 결재는 `close`).
+- `approved` → 7번 보고. 게시본이 있었으면 "사무실 화면 결재함에서 '게시'를 누르면 올라갑니다"라고만 알린다. **비서·직원은 `tools/publish.mjs`를 실행하지 않는다** — 게시는 사장님이 화면에서 PIN 과 함께 직접 누른다. `revise` → 의견을 answers.md 에 "결재 의견"으로 적고 **본부장부터** 다시: director [분배 수정이 필요하면 분배] → 해당 팀장 [재작업] → 팀원 → 팀장 → 본부장 [최종결재] → 새로 `submit`(이전 결재는 `close`).
 - 사장님이 대화에서 "승인"/"○○ 고쳐 줘"라고 해도 같은 결정: `node tools/office.mjs decide <결재id> approve|revise --note "…" --via chat`.
 - brief 에 "시안 먼저 확인"이 있으면 디자인팀 결과만 먼저 같은 길(팀장 → 본부장 → 결재함)로 올린다.
 - 끝나면 `node tools/office.mjs close <결재id>`.
@@ -113,7 +115,7 @@ node tools/office.mjs submit director-<작업> --title "<주제> — <채널들>
 그 뒤 `node tools/office.mjs end director-<작업이름>`. 하루 업무를 마치면 `node tools/office.mjs day end`(불 끄기).
 
 ## 지킬 것
-- 직원 결과를 "올렸다"고 말하지 않는다. 이 구조는 **원고와 시안까지**만 만든다. 네이버·인스타·스레드에 실제로 올리는 연결은 없다.
+- 직원 결과를 "올렸다"고 말하지 않는다. 직원이 만드는 것은 원고·시안·게시본까지다. 인스타·스레드 게시는 승인 뒤 사장님이 화면의 '게시' 버튼으로만 한다(네이버 블로그는 자동 게시 불가 — 붙여넣기용 원고로 준다).
 - 비서(이 대화)는 직급을 건너뛰지 않는다: 팀원 결과를 본부장에게 바로 주거나, 본부장 반려를 팀원에게 바로 전하지 않는다.
 - 본부장 최종결재 없이 사장님 결재함에 올리지 않는다.
 - 사무실 기록 명령이 실패하면 숨기지 말고 보고에 적는다.

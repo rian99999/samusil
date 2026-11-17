@@ -46,7 +46,7 @@ Claude Code 의 서브에이전트는 다른 서브에이전트를 부를 수 �
 - `node tools/knowledge-check.mjs` 로 30일 지난 파일을 찾고, `/knowledge-refresh` 로 다시 조사한다(업무 시작 때 자동 확인). 바뀐 내용은 `knowledge/CHANGELOG.md`.
 - 이 작업 환경에서는 blog.naver.com·네이버 도움말이 자동 수집 차단이라 네이버 공식 문서는 미확인으로 남아 있다.
 
-**이 구조는 원고·시안까지만 만든다. 네이버·인스타·스레드에 실제로 올리는 기능은 없다.**
+**직원은 원고·시안·게시본까지만 만든다.** 인스타그램·스레드는 사장님이 결재 승인 뒤 화면의 **게시** 버튼을 눌러야 올라간다(아래 "게시와 휴대폰 알림"). 네이버 블로그는 자동 게시가 불가능해 붙여넣기용 원고로 준다.
 
 사무실 화면 기록은 `tools/office.mjs`가 한다:
 
@@ -217,3 +217,40 @@ https://www.figma.com/design/gpxpF7f9FKGPE3HEPLpRss
 - `assets/office.png` 등각 사무실 1장, `assets/chars/c*.png` 3D 캐릭터 4×3 (예전 2D `assets/sprite.png`는 쓰지 않음), `assets/layout.json` 자리·엘리베이터·줄 좌표.
 - `python3 tools/make_assets.py` 로 다시 만든다(Pillow 필요). 직접 그린 그림으로 바꿀 때는 같은 크기·좌표계를 지키거나 `layout.json` 을 맞춰 고친다.
 - 스프라이트 칸 순서: 1행 걷기×4 / 2행 타자×2, 만세×2 / 3행 서기, 졸기, 쪼그림×2.
+
+## 게시와 휴대폰 알림
+
+### 무엇이 되나
+| | 자동 게시 | 이유 |
+|---|---|---|
+| 인스타그램 (비즈니스 계정) | 됨 — 사진 1~10장 + 캡션 | Meta 공식 게시 API |
+| 스레드 | 됨 — 글 1개(+그림 1장) | Meta 공식 Threads API. 타래 이어 달기는 문서 확인 전이라 꺼 둠 |
+| 네이버 블로그 | 안 됨 | 네이버가 2020-05-06 블로그 글쓰기 API 를 종료. 붙여넣기용 원고로 받는다 |
+
+### 흐름
+1. 직원이 만든 결과 + **게시본**(`post-instagram.json`, `post-threads.json`)이 본부장 최종결재를 거쳐 결재함에 올라온다 → **휴대폰 알림**.
+2. 알림을 누르면 그 결재가 열린다(같은 와이파이일 때). 글·그림·게시본을 보고 **승인**.
+3. 결재함의 **게시 대기**에서 **인스타그램에 게시 / 스레드에 게시**를 누른다(사무실 비밀번호, 한 번 더 확인 창).
+4. `tools/publish.mjs`가 올리기 직전에 다시 검사한다: 결재 때 파일과 같은지(지문), 광고 표시가 첫 줄에 있는지, 해시태그 5개 이하, 글자 수, 인스타 그림 JPEG, 브랜드 검사 오류 0. 하나라도 걸리면 올리지 않는다.
+5. 게시가 끝나면 결재함에 게시물 주소가 남고 휴대폰 알림이 온다. 같은 결재·채널은 두 번 올라가지 않는다.
+
+Claude(비서·직원)는 게시를 실행하지 못하게 `.claude/settings.json`에서 `publish.mjs` 실행과 `office.secrets.json` 읽기를 막아 두었다. 이것은 Claude Code 권한 규칙이라, 같은 컴퓨터의 사람이 직접 실행하는 것까지 막지는 않는다.
+
+### 준비 (사장님 컴퓨터, 한 번만)
+1. **연결 파일**: `office.secrets.example.json`을 `office.secrets.json`으로 복사한다. 이 파일은 git 에 올라가지 않는다. 토큰을 대화·메신저에 붙여넣지 않는다.
+2. **휴대폰 알림 (ntfy)**
+   - 휴대폰에 **ntfy** 앱 설치(안드로이드·아이폰).
+   - 길고 짐작하기 어려운 주제 이름을 정한다(예: `rian-office-` 뒤에 무작위 글자 20개). 이 이름을 아는 사람은 알림을 볼 수 있으니 비밀번호처럼 다룬다.
+   - 앱에서 그 주제를 구독하고, `office.secrets.json`의 `notify.ntfyTopic`에 같은 이름을 넣는다. `officeUrl`에는 serve.mjs 가 알려 주는 `http://192.168.x.x:8080`을 넣는다(알림을 누르면 그 결재가 열림).
+   - `node tools/notify.mjs test` → 휴대폰에 시험 알림이 오면 끝.
+   - 알림에는 결재 번호와 제목만 간다(글 내용·고객 정보는 보내지 않는다). 알림은 ntfy.sh 서버를 거친다.
+3. **인스타그램·스레드 연결 (Meta 개발자 앱)**
+   - [Meta for Developers](https://developers.facebook.com/)에서 앱을 만들고, 인스타그램 비즈니스 계정에 `instagram_business_basic`·`instagram_business_content_publish` 권한(Instagram 로그인 방식, 호스트 graph.instagram.com), 스레드에 `threads_basic`·`threads_content_publish` 권한을 승인한다. 화면 이름·순서는 Meta 가 자주 바꾸므로 [인스타 게시 문서](https://developers.facebook.com/docs/instagram-platform/content-publishing/)·[스레드 문서](https://developers.facebook.com/documentation/threads/overview)를 따른다.
+   - 받은 계정 ID 와 액세스 토큰을 `office.secrets.json`의 `instagram.userId/accessToken`, `threads.userId/accessToken`에 넣는다. 토큰은 만료될 수 있다 — 게시가 "Meta 응답 401/190" 으로 실패하면 새로 받는다.
+4. **그림 임시 공개 (cloudflared)**: Meta 는 그림을 인터넷 주소에서 가져간다. `cloudflared`를 설치해 두면 게시하는 몇십 초 동안만 그 게시물의 그림들만 추측하기 어려운 임시 주소(`*.trycloudflare.com`)로 열고, 끝나면 닫는다. 계정은 필요 없다.
+   - 맥: `brew install cloudflared` / 윈도우: `winget install --id Cloudflare.cloudflared`
+5. 서버를 비밀번호와 함께 켠다: `node tools/serve.mjs --pin 1234` → 창에 "휴대폰 알림: 켜짐 · 게시 연결: 인스타 있음 / 스레드 있음"이 보이면 준비 끝.
+
+### 확인한 것 / 못 한 것
+- 이 저장소 안에서 가짜 Meta·알림 서버로 끝까지 시험함: 승인 전 게시 거절, 비밀번호 틀림·다른 사이트 요청 거절, 사진 2장 캐러셀 게시, 스레드 게시, 게시 완료 알림, 같은 글 두 번 게시 거절, 승인 뒤 바뀐 파일 거절, 해시태그 6개·광고 표시 누락 거절, 화면에 토큰이 나오지 않음.
+- **실제 Meta·ntfy 서버로는 아직 시험하지 못했다**(이 작업 환경에서 접속 차단). 첫 게시는 사장님 컴퓨터에서 시험용 글 하나로 확인한다.

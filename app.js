@@ -444,6 +444,7 @@
     firstSnapshot = false;
     updateAskPill(questions);
     updateApPill(pendingApprovals(d));
+    if (apCurrent && apDlg.open && apDlg.classList.contains("detail")) renderPublish();
 
     // 하루 끝 → 방마다 차례로 불 끄기
     const ended = !!d.dayEnded;
@@ -574,6 +575,9 @@
     if (want) {
       const i = floors.findIndex((f) => f.id === want);
       if (i >= 0) goTo(i, true);
+      // 휴대폰 알림을 누르면 #a3(그 결재) · #q(질문함) 으로 열린다
+      else if (/^a\d+$/.test(want)) { const ceo = floors.findIndex((f) => f.id === "ceo"); if (ceo >= 0) goTo(ceo, true); openApproval(want); }
+      else if (want === "q") openQbox();
     }
     setInterval(poll, CFG.pollMs);
     setInterval(watchdog, 250);
@@ -804,9 +808,19 @@
       .sort((a, b) => (ms(a.submittedAt) ?? 0) - (ms(b.submittedAt) ?? 0));
   }
   const canDecide = () => !!(DEMO || (data && data.canApprove));
+  // 게시 대기: 승인됐고 게시본(post-instagram.json / post-threads.json)이 있는데 아직 다 올리지 않은 결재
+  const PUB_CH = { instagram: "인스타그램", threads: "스레드" };
+  const postChannels = (ap) => Object.keys(PUB_CH).filter((ch) => (ap.files || []).some((f) => String(f).split("/").pop() === `post-${ch}.json`));
+  function publishReady(d) {
+    const list = d && Array.isArray(d.approvals) ? d.approvals : [];
+    return list.filter((a) => a && a.status === "approved" && postChannels(a).some((ch) => !((a.published || {})[ch] && a.published[ch].status === "done")));
+  }
   function updateApPill(list) {
-    $("#apPill").hidden = !list.length;
-    $("#apCount").textContent = list.length;
+    const pub = publishReady(data);
+    const n = list.length + pub.length;
+    $("#apPill").hidden = !n;
+    $("#apCount").textContent = n;
+    $("#apLabel").textContent = list.length ? (pub.length ? "결재·게시 대기" : "결재 대기") : "게시 대기";
   }
   // 아주 작은 마크다운 → HTML (먼저 모두 이스케이프하고, 정해진 모양만 되살린다)
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -875,6 +889,25 @@
       li.append(b);
       box.append(li);
     }
+    const pub = publishReady(data);
+    if (pub.length) {
+      $("#apEmpty").hidden = true;
+      box.append(el("li", "ap-group", "게시 대기 (승인됨)"));
+      for (const ap of pub) {
+        const li = el("li");
+        const b = el("button", "ap-item");
+        b.type = "button";
+        const st = postChannels(ap).map((ch) => `${PUB_CH[ch]} ${pubStatusWord((ap.published || {})[ch])}`).join(" · ");
+        b.append(el("b", null, ap.title), el("span", "ap-meta", st));
+        b.addEventListener("click", () => openApproval(ap.id));
+        li.append(b);
+        box.append(li);
+      }
+    }
+  }
+  function pubStatusWord(p) {
+    if (!p) return "올리기 전";
+    return { publishing: "올리는 중…", done: "올라감", failed: "실패" }[p.status] || p.status;
   }
   async function loadFile(ap, p) {
     const wrap = el("section", "ap-file");
@@ -882,6 +915,25 @@
     const body = el("div", "ap-doc");
     wrap.append(body);
     const ext = (p.split(".").pop() || "").toLowerCase();
+    // 게시본(JSON)은 실제로 올라갈 글을 그대로 보여 준다
+    const showPost = (txt) => {
+      let j = null; try { j = JSON.parse(txt); } catch (_) {}
+      if (!j) { body.append(el("pre", "ap-pre", txt)); return; }
+      const box = el("div", "post-preview");
+      if (j.ad) box.append(el("p", "ap-meta", "광고 글 (첫 줄 광고 표시 확인)"));
+      if (j.caption != null) box.append(el("pre", "ap-pre", String(j.caption)));
+      (Array.isArray(j.posts) ? j.posts : []).forEach((t, i) => box.append(el("p", "ap-meta", `${i + 1}번째 글`), el("pre", "ap-pre", String(t))));
+      if (j.topicTag) box.append(el("p", "ap-meta", "주제 태그: " + j.topicTag));
+      const imgs = [...(Array.isArray(j.images) ? j.images : []), ...(j.image ? [j.image] : [])];
+      if (imgs.length) box.append(el("p", "ap-meta", "그림: " + imgs.join(", ")));
+      body.append(box);
+    };
+    if (ext === "json") {
+      if (ap.preview && ap.preview[p] != null) { showPost(ap.preview[p]); return wrap; }
+      try { const r = await fetch("api/file?path=" + encodeURIComponent(p), { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); showPost(await r.text()); }
+      catch (e) { body.append(el("p", "err", `게시본을 열지 못했습니다(${e.message}).`)); }
+      return wrap;
+    }
     if (ap.preview && ap.preview[p] != null) { body.innerHTML = mdToHtml(ap.preview[p]); return wrap; }
     if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
       const img = el("img"); img.alt = p; img.loading = "lazy"; img.src = "api/file?path=" + encodeURIComponent(p);
@@ -909,6 +961,11 @@
     $("#apNoteIn").value = ""; $("#apMsg").textContent = ""; $("#apErr").textContent = "";
     $("#apApprove").disabled = $("#apRevise").disabled = !canDecide();
     $("#apCantDecide").hidden = canDecide();
+    const approved = ap.status === "approved";
+    $(".ap-decide").hidden = approved;
+    $("#apPublish").hidden = !approved || !postChannels(ap).length;
+    $("#pubMsg").textContent = "";
+    renderPublish();
     const files = $("#apFiles");
     files.textContent = "";
     files.append(el("p", "ap-loading", "자료를 여는 중…"));
@@ -951,6 +1008,61 @@
     if (data) apply(data);
     openApList();
     $("#apListMsg").textContent = `${done} 직원이 이어서 진행합니다.${DEMO ? " (시연)" : ""}`;
+  }
+  // ------------------------------------------------------------ 게시 (승인된 결재 → 인스타그램·스레드)
+  const pubPinSaved = () => { try { return localStorage.getItem("office-pin") || ""; } catch (_) { return ""; } };
+  function renderPublish() {
+    if (!apCurrent || $("#apPublish").hidden) return;
+    const ap = ((data && data.approvals) || []).find((x) => String(x.id) === String(apCurrent.id)) || apCurrent;
+    const can = (data && data.canPublish) || {};
+    const needPin = !DEMO && !pubPinSaved();
+    $("#pubPin").hidden = $("#pubPinLabel").hidden = !needPin;
+    const list = $("#pubList");
+    list.textContent = "";
+    for (const ch of postChannels(ap)) {
+      const p = (ap.published || {})[ch];
+      const li = el("li", "pub-row");
+      const info = el("div", "pub-info");
+      info.append(el("b", null, PUB_CH[ch]), el("span", "ap-meta", pubStatusWord(p) + (p && p.error ? ` — ${p.error}` : "")));
+      if (p && p.url && /^https:\/\//.test(p.url)) {
+        const a = el("a", null, "게시물 보기"); a.href = p.url; a.target = "_blank"; a.rel = "noopener noreferrer"; info.append(a);
+      }
+      li.append(info);
+      const busy = p && (p.status === "publishing" || p.status === "done");
+      // 검사에서 걸린 글은 다시 눌러도 또 걸린다 → 버튼 대신 수정 요청 안내
+      const stuck = p && p.status === "failed" && (p.posted > 0 || /^검사 실패/.test(p.error || ""));
+      if (stuck) info.append(el("span", "ap-meta", p.posted > 0 ? "일부만 올라갔습니다. 앱에서 확인해 주세요." : "직원에게 고치게 한 뒤 새로 결재를 올려야 게시할 수 있습니다."));
+      if (!busy && !stuck) {
+        const b = el("button", "primary", p && p.status === "failed" ? "다시 게시" : `${PUB_CH[ch]}에 게시`);
+        b.type = "button";
+        if (!DEMO && !can[ch]) { b.disabled = true; info.append(el("span", "ap-meta", "연결 안 됨: office.secrets.json 과 serve.mjs --pin 이 필요합니다")); }
+        b.addEventListener("click", () => publish(ap.id, ch, b));
+        li.append(b);
+      }
+      list.append(li);
+    }
+  }
+  async function publish(id, ch, btn) {
+    if (!window.confirm(`${PUB_CH[ch]}에 지금 올릴까요?\n올린 글은 이 화면에서 지울 수 없습니다.`)) return;
+    btn.disabled = true;
+    $("#pubMsg").textContent = "";
+    try {
+      if (DEMO) { DEMO.publish(id, ch); $("#pubMsg").textContent = "시연: 실제로는 올리지 않았습니다."; }
+      else {
+        const pin = $("#pubPin").hidden ? pubPinSaved() : $("#pubPin").value.trim();
+        if (!pin) throw new Error("사무실 비밀번호를 적어 주세요");
+        const r = await fetch("api/publish", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, channel: ch, pin }) });
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { try { localStorage.removeItem("office-pin"); } catch (_) {} }
+        if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+        try { localStorage.setItem("office-pin", pin); } catch (_) {}
+        $("#pubPin").value = "";
+        $("#pubMsg").textContent = "올리는 중입니다. 끝나면 여기와 휴대폰 알림으로 알려 드립니다.";
+      }
+    } catch (e) {
+      $("#pubMsg").textContent = `게시를 시작하지 못했습니다: ${e.message}`;
+      btn.disabled = false;
+    }
   }
   $("#apPill").addEventListener("click", () => { $("#apListMsg").textContent = ""; openApList(); });
   $("#apClose").addEventListener("click", () => apDlg.close());

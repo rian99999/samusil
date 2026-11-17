@@ -67,7 +67,7 @@
 
   <!-- 답할 질문이 있을 때만 보이는 버튼 -->
   <button id="apPill" class="ask-pill ap-pill" type="button" aria-haspopup="dialog" hidden>
-    결재 대기 <b id="apCount">0</b>
+    <span id="apLabel">결재 대기</span> <b id="apCount">0</b>
   </button>
   <button id="askPill" class="ask-pill" type="button" aria-haspopup="dialog" hidden>
     답할 질문 <b id="askCount">0</b>
@@ -103,6 +103,14 @@
           <button id="apRevise" class="ghost" type="button">수정 요청</button>
           <button id="apApprove" class="primary" type="button">승인</button>
         </div>
+      </div>
+      <div id="apPublish" class="ap-publish" hidden>
+        <h3 class="ap-pub-title">게시</h3>
+        <p class="ros-note">승인된 글입니다. 아래 버튼을 <b>직접 눌러야</b> 올라갑니다. 올리기 직전에 광고 표시·해시태그 수·글자 수·브랜드 검사를 한 번 더 하고, 걸리면 올리지 않습니다. 올린 글은 여기서 지울 수 없습니다(앱에서 지움).</p>
+        <label for="pubPin" id="pubPinLabel">사무실 비밀번호 <span class="ap-opt">(이 기기에 기억됨)</span></label>
+        <input id="pubPin" type="password" inputmode="numeric" autocomplete="off" maxlength="40">
+        <ul id="pubList" class="pub-list"></ul>
+        <p id="pubMsg" class="copy-msg" role="status" aria-live="polite"></p>
       </div>
     </div>
   </dialog>

@@ -66,6 +66,17 @@
         "work/demo/design.md": "사용한 스킬: rian-brand, design:design-critique, design:accessibility-review\n브랜드 검사: 오류 0 / 경고 0\n\n# 카드뉴스 4장 (1080×1350)\n\n1. **표지** — Mist Light 배경, 국문 헤드 Hahmlet Light 88px, Tourmaline 은 쓰지 않음\n2. **원인** — Raw 배경, 명도·채도 비교 칩 2개(고객 색 칩만 유채색)\n3. **고르는 법** — Raw 배경, 목록 기호는 Tourmaline 마름모 (이 장의 Tourmaline 한 곳)\n4. **예약 안내** — '예약 · 네이버 플레이스' 만 Tourmaline, RIAN 워드마크 좌상단\n\nFigma 미연결 – 설계서만 작성",
       },
     }];
+    // 시연용: 이미 승인돼 '게시 대기'인 결재 (실제로 올리지 않는다)
+    approvals.push({
+      id: "a2", sessionId: "s1", from: "본부장", status: "approved", submittedAt: iso(now() - 40 * MIN), decidedAt: iso(now() - 30 * MIN),
+      title: "진단 결과로 립 고르기 — 인스타그램·스레드 게시본",
+      files: ["work/demo/post-instagram.json", "work/demo/post-threads.json"],
+      preview: {
+        "work/demo/post-instagram.json": JSON.stringify({ ad: false, caption: "같은 코랄인데 왜 나만 칙칙해 보일까요?\n\n원인은 색 이름이 아니라 명도와 채도 차이예요.\n\n#서면퍼스널컬러 #부산퍼스널컬러 #퍼스널컬러진단", images: ["work/demo/card-1.jpg", "work/demo/card-2.jpg"] }),
+        "work/demo/post-threads.json": JSON.stringify({ ad: false, posts: ["같은 코랄 립인데 사람마다 달라 보이는 이유, 명도와 채도예요. 진단에서는 같은 계열 안에서 고르는 법을 알려 드려요."], topicTag: "퍼스널컬러" }),
+      },
+      published: {},
+    });
     const timers = [];
     const later = (ms, fn) => timers.push({ at: now() + ms, fn });
     const SUB = { design: ["카드뉴스 시안", "배너 수정"], naver: ["본문 초안", "태그 정리"], insta: ["캡션 작성", "해시태그 조사"], threads: ["타래 초안", "댓글 답변안"] };
@@ -99,12 +110,13 @@
         if (s && s.state !== next) { s.state = next; s.stateSince = iso(now()); }
       }
     }
-    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })));
+    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, canPublish: { instagram: true, threads: true }, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })));
     return {
       tick, snapshot, spawn, ask,
-      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })) : null; },
+      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, canPublish: { instagram: true, threads: true }, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })) : null; },
       setDayEnded(v) { dayEnded = v; },
       decide(id, decision, note) { const a = approvals.find((x) => x.id === id); if (a && a.status === "pending") { a.status = decision === "approve" ? "approved" : "revise"; a.decisionNote = note || ""; a.decidedAt = iso(now()); } },
+      publish(id, ch) { const a = approvals.find((x) => x.id === id); if (a && a.status === "approved") { a.published = a.published || {}; a.published[ch] = { status: "publishing", at: iso(now()) }; later(4000, () => { a.published[ch] = { status: "done", at: iso(now()), url: "" }; }); } },
       answer(id) { const i = questions.findIndex((q) => q.id === id); if (i >= 0) questions.splice(i, 1); },
       get paused() { return paused; }, get dayEnded() { return dayEnded; },
     };

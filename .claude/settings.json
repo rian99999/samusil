@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(node tools/publish.mjs:*)",
+      "Bash(node ./tools/publish.mjs:*)",
+      "Read(./office.secrets.json)",
+      "Edit(./office.secrets.json)",
+      "Write(./office.secrets.json)"
+    ]
+  }
+}

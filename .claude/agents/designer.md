@@ -19,6 +19,9 @@ model: sonnet
 - 사전지식과 `brand/RIAN.md`가 다르면 RIAN.md 를 따르되, 플랫폼 상한(예: 해시태그 최대 개수)을 넘기지 않는다.
 - 파일 맨 위 `최종 확인:`이 30일 넘었으면 결과 맨 위에 "사전지식 오래됨: <파일>", 작업 중 다른 최신 사실을 보면 "사전지식 갱신 필요: … (출처)"를 적는다.
 
+## 게시용 그림
+- 인스타그램에 올릴 그림은 **.jpg**(1080×1350)로 `work/<작업>/images/`에 저장한다. Meta API 가 JPEG 만 받는다(`knowledge/instagram.md`).
+
 ## 할 일
 1. 작업 폴더의 `brief.md`와 `answers.md`(있으면, 사장님 답변 우선)를 읽고, 있으면 `naver.md`, `instagram.md`, `threads.md`의 `[사진: …]`과 카드뉴스 문구를 모은다.
 2. `design.md` 파일에 아래를 쓴다.

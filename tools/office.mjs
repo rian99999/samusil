@@ -12,6 +12,7 @@
 //   node tools/office.mjs decide <결재id> approve|revise [--note "의견"]  # 승인/수정 요청 (화면이 쓰는 명령)
 //   node tools/office.mjs wait-approval <결재id> [--timeout 분]           # 결정이 날 때까지 기다림
 //   node tools/office.mjs close <결재id>                                  # 결재 정리
+//   node tools/office.mjs record-publish <결재id> --channel instagram|threads --status publishing|done|failed [--url 주소] [--error 내용]
 //   node tools/office.mjs task-add --text "/office-run …"     # 화면에서 보낸 업무 지시 받기 → 업무id
 //   node tools/office.mjs task-wait [--timeout 분]             # 새 업무가 올 때까지 기다렸다가 받아 감(JSON)
 //   node tools/office.mjs task-done <업무id> [--status done|failed] [--note "…"]
@@ -20,12 +21,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
+import { notify } from "./notify.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
 const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
 const STATES = ["working", "blocked", "reporting", "idle"];
 const nowIso = () => new Date().toISOString();
+const sha256 = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 
 function load() {
   try { return JSON.parse(fs.readFileSync(STATE, "utf8")); }
@@ -110,6 +114,8 @@ switch (cmd) {
       return q.id;
     });
     console.log(qid);
+    const nq = await notify({ event: "question", title: `질문 ${qid} — 답이 필요합니다`, message: "사무실 화면의 질문함에서 답해 주세요.", path: "#q" , tags: ["question"] });
+    if (!nq.sent && !/주제.*없음/.test(nq.reason)) console.error("알림 못 보냄: " + nq.reason);
     break;
   }
   case "reply": {
@@ -167,11 +173,15 @@ switch (cmd) {
       const x = s.sessions.find((y) => y.id === id);
       const a = { id: "a" + (s.aseq = (s.aseq || 0) + 1), sessionId: id, from: x ? x.name : id, title,
         files: files.map((f) => path.relative(ROOT, path.resolve(ROOT, f)).split(path.sep).join("/")),
-        note: o.note || "", submittedAt: nowIso(), status: "pending" };
+        note: o.note || "", submittedAt: nowIso(), status: "pending",
+        // 결재할 때 본 내용 그대로인지 게시 직전에 확인하려고, 파일마다 지문(sha256)을 남긴다
+        hashes: Object.fromEntries(files.map((f) => [path.relative(ROOT, path.resolve(ROOT, f)).split(path.sep).join("/"), sha256(path.resolve(ROOT, f))])) };
       s.approvals.push(a);
       return a.id;
     });
     console.log(aid);
+    const na = await notify({ event: "approval", title: `결재 ${aid} — 확인해 주세요`, message: title.slice(0, 80), path: "#" + aid, tags: ["clipboard"] });
+    if (!na.sent && !/주제.*없음/.test(na.reason)) console.error("알림 못 보냄: " + na.reason);
     break;
   }
   case "decide": {
@@ -239,6 +249,23 @@ switch (cmd) {
     console.log("업무 " + st + ": " + id);
     break;
   }
+  case "record-publish": {
+    const ch = o.channel, st = o.status;
+    if (!["instagram", "threads"].includes(ch)) die("--channel instagram|threads");
+    if (!["publishing", "done", "failed"].includes(st)) die("--status publishing|done|failed");
+    withLock((s) => {
+      const a = (s.approvals || []).find((x) => x.id === id);
+      if (!a) die("없는 결재: " + id);
+      if (a.status !== "approved") die("승인된 결재만 게시할 수 있습니다: " + id + " (" + a.status + ")");
+      a.published = a.published || {};
+      const cur = a.published[ch];
+      // 같은 글을 두 번 올리지 않게: 진행 중이거나 이미 올라간 것은 다시 시작하지 않는다
+      if (st === "publishing" && cur && (cur.status === "publishing" || cur.status === "done")) die("이미 " + (cur.status === "done" ? "게시됨" : "게시 중") + ": " + id + " " + ch);
+      a.published[ch] = { status: st, at: nowIso(), ...(o.url ? { url: String(o.url) } : {}), ...(o.error ? { error: String(o.error).slice(0, 500) } : {}), ...(cur && cur.posted ? { posted: cur.posted } : {}), ...(o.posted ? { posted: Number(o.posted) } : {}) };
+    });
+    console.log(`게시 기록: ${id} ${ch} ${st}`);
+    break;
+  }
   case "close":
     withLock((s) => { s.approvals = (s.approvals || []).filter((x) => x.id !== id); });
     console.log("결재 정리: " + id);
@@ -248,5 +275,5 @@ switch (cmd) {
     console.log("초기화");
     break;
   default:
-    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 21).join("\n"));
+    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 22).join("\n"));
 }

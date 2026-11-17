@@ -10,6 +10,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import crypto from "node:crypto";
+import { spawn } from "node:child_process";
+import { publicSetup } from "./secrets.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
@@ -29,7 +31,10 @@ function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
   try { s = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw e; }
+  let setup = { instagram: false, threads: false, notify: false };
+  try { setup = publicSetup(); } catch {}
   return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, canApprove: true, canSendTask: !!PIN,
+    canPublish: { instagram: !!PIN && setup.instagram, threads: !!PIN && setup.threads }, notifyOn: setup.notify,
     tasks: (s.tasks || []).slice(-10).map((t) => ({ id: t.id, status: t.status, createdAt: t.createdAt, takenAt: t.takenAt, doneAt: t.doneAt, note: t.note })), approvals: s.approvals || [], roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
 }
 
@@ -42,7 +47,7 @@ function reply(id, text) {
   });
 }
 // 결재할 자료 보여 주기: work/ 와 reports/ 안의 글·그림만, 그 밖은 막는다
-const VIEW_TYPES = { ".md": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
+const VIEW_TYPES = { ".md": "text/plain; charset=utf-8", ".json": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
 function fileApi(url, res) {
   const rel = String(url.searchParams.get("path") || "").replace(/\\/g, "/");
   const abs = path.resolve(ROOT, rel);
@@ -98,6 +103,35 @@ function taskApi(req, res) {
     send(out.ok ? 200 : 500, out);
   });
 }
+// 승인된 결재를 인스타·스레드에 게시 (사장님이 화면에서 '게시'를 눌렀을 때만). 실제 일은 publish.mjs 가 한다.
+const publishing = new Set();
+function publishApi(req, res) {
+  const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  if (!PIN) return send(403, { error: "사무실 비밀번호가 설정되지 않아 게시할 수 없습니다 (serve.mjs --pin 으로 실행)" });
+  readJson(req, res, send, (j) => {
+    const r = pinOk(j.pin);
+    if (r === "locked") return send(429, { error: "비밀번호를 여러 번 틀려 10분 동안 막혔습니다" });
+    if (r !== "ok") return send(401, { error: "사무실 비밀번호가 맞지 않습니다" });
+    const id = String(j.id || ""), ch = String(j.channel || "");
+    if (!/^a\d+$/.test(id) || !["instagram", "threads"].includes(ch)) return send(400, { error: "결재 번호나 채널이 잘못됐습니다" });
+    try {
+      const st = JSON.parse(fs.readFileSync(STATE, "utf8"));
+      const a = (st.approvals || []).find((x) => x.id === id);
+      if (!a || a.status !== "approved") return send(409, { error: "승인된 결재가 아닙니다" });
+      const p = (a.published || {})[ch];
+      if (p && p.status === "done") return send(409, { error: "이미 게시됐습니다" });
+    } catch { return send(500, { error: "상태 파일을 읽지 못했습니다" }); }
+    const key = id + ":" + ch;
+    if (publishing.has(key)) return send(409, { error: "이미 게시 중입니다" });
+    publishing.add(key);
+    const child = spawn(process.execPath, [path.join(ROOT, "tools/publish.mjs"), id, "--channel", ch], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    let log = "";
+    child.stdout.on("data", (b) => (log += b)); child.stderr.on("data", (b) => (log += b));
+    const kill = setTimeout(() => child.kill(), 10 * 60000);
+    child.on("exit", (code) => { clearTimeout(kill); publishing.delete(key); console.log(`[게시] ${id} ${ch} → ${code === 0 ? "완료" : "실패"}: ${log.trim().split("\n").pop()}`); });
+    send(202, { ok: true, started: true });
+  });
+}
 function decideApi(req, res) {
   const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
   readJson(req, res, send, async (j) => {
@@ -146,6 +180,7 @@ http.createServer((req, res) => {
   if (url.pathname === "/api/answer") return answerApi(req, res);
   if (url.pathname === "/api/decide") return decideApi(req, res);
   if (url.pathname === "/api/task") return taskApi(req, res);
+  if (url.pathname === "/api/publish") return publishApi(req, res);
   if (url.pathname === "/api/file") return fileApi(url, res);
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
   if (!PUBLIC.has(rel)) { res.writeHead(404); return res.end("not found"); }
@@ -160,4 +195,7 @@ http.createServer((req, res) => {
   console.log(`AI 사무실: http://localhost:${PORT}`);
   console.log(PIN ? "업무 지시 받기: 켜짐 (사무실 비밀번호 설정됨)" : "업무 지시 받기: 꺼짐 (켜려면 --pin <비밀번호>)");
   for (const ip of ips) console.log(`같은 와이파이의 휴대폰에서: http://${ip}:${PORT}`);
+  let st = {};
+  try { st = publicSetup(); } catch (e) { console.log("연결 정보 파일 오류: " + e.message); }
+  console.log(`휴대폰 알림: ${st.notify ? "켜짐" : "꺼짐 (office.secrets.json 의 notify.ntfyTopic)"} · 게시 연결: 인스타 ${st.instagram ? "있음" : "없음"} / 스레드 ${st.threads ? "있음" : "없음"}${PIN ? "" : " (게시는 --pin 필요)"}`);
 });
