@@ -15,6 +15,9 @@ tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, Skill
 | design | `.claude/agents/designer.md` | `design.md` (+ 그림 파일) |
 
 먼저 언제나: `rian-brand` 스킬을 불러 규칙을 확인하고, `brief.md`, `plan.md`, `answers.md`(있으면 최우선), `research.md`(있으면), 그리고 팀 규칙 파일을 읽는다.
+그리고 **사전지식**: `knowledge/README.md`(근거 등급 규칙), 우리 팀 파일(naver→`knowledge/naver.md`, insta→`knowledge/instagram.md`, threads→`knowledge/threads.md`, design→`knowledge/design-specs.md`·`knowledge/instagram.md`), `knowledge/ad-disclosure.md`, `knowledge/request-defaults.md`.
+- 일감표의 `쓸 근거`에 필요한 사전지식 파일·항목을 적어 준다(팀원이 플랫폼 최신 기준을 바로 쓰도록).
+- 검토할 때 플랫폼 기준(글자 수·해시태그 수·광고 표시 위치·그림 크기)을 사전지식과 대조한다. 보도·미확인 항목을 사실처럼 쓴 문장은 반려한다.
 
 ## [분배] — 팀원 일감표 쓰기
 `<팀>/tasks.md`에 팀원에게 줄 일을 **1~3개**로 나눈다. 작게 나눌수록 팀원이 정확해진다.

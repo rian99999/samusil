@@ -40,6 +40,12 @@ node tools/serve.mjs                # http://localhost:8080  (office-state.json 
 모델은 `.claude/agents/<이름>.md` 맨 위 `model:` 줄로 정한다. 바꾸려면 그 한 줄만 고친다.
 Claude Code 의 서브에이전트는 다른 서브에이전트를 부를 수 없다. 그래서 메인 대화가 **비서**로서 순서대로 사람을 불러 주고, 지시·보고 내용은 파일로 위아래로 오간다. 비서는 쓰거나 결재하지 않는다.
 
+### 직원 사전지식 (`knowledge/`)
+짧게 지시해도 알아듣도록 분야별 최신 기준을 모아 두었다: 짧은 지시 풀이표(`request-defaults.md`), 광고 표시 법 기준(`ad-disclosure.md`), 네이버·인스타·스레드·그림 크기.
+- 모든 항목에 근거 등급(공식 / 공식(요약) / 보도 / 미확인)과 출처·확인일이 붙는다. 결과물에는 공식 항목만 사실로 쓴다.
+- `node tools/knowledge-check.mjs` 로 30일 지난 파일을 찾고, `/knowledge-refresh` 로 다시 조사한다(업무 시작 때 자동 확인). 바뀐 내용은 `knowledge/CHANGELOG.md`.
+- 이 작업 환경에서는 blog.naver.com·네이버 도움말이 자동 수집 차단이라 네이버 공식 문서는 미확인으로 남아 있다.
+
 **이 구조는 원고·시안까지만 만든다. 네이버·인스타·스레드에 실제로 올리는 기능은 없다.**
 
 사무실 화면 기록은 `tools/office.mjs`가 한다:

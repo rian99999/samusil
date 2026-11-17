@@ -25,7 +25,11 @@ Claude Code 에서 서브에이전트는 다른 서브에이전트를 부를 수
 
 작업 폴더: `work/<작업이름>/` — `brief.md`(비서) · `plan.md`(본부장) · `<팀>/tasks.md`·`review.md`·`report.md`(팀장) · `<팀>/parts/*.md`(팀원) · 최종 결과 파일(팀장) · `reports/<작업이름>.md`(본부장 최종결재)
 
+## 0. 사전지식 확인 (비서)
+`node tools/knowledge-check.mjs` → ✗(30일 지남)가 있으면 Skill 도구로 `knowledge-refresh`를 그 파일만 대상으로 먼저 돌린다(조사가 막히면 그대로 진행하고 보고에 적는다). 지난 작업 결과에 `사전지식 갱신 필요:` 줄이 있으면 그것도 함께 갱신한다.
+
 ## 1. 일감 정리 (비서)
+- 사장님 지시가 짧아도 되묻지 않는다. 받은 말을 그대로 brief.md 에 옮기고, 풀어 쓰기는 본부장이 `knowledge/request-defaults.md`로 한다(plan.md 의 "지시 풀이"). 본부장이 '꼭 물어야 하는 것'으로 올린 것만 묻는다.
 - Skill 도구로 `rian-brand`를 불러 규칙을 확인한다. 브랜드는 RIAN(리안 퍼스널컬러&메이크업), 규칙 `brand/RIAN.md`, 사실 `brand/facts.md`.
 - 메시지의 `[업무 지시서]` 블록을 그대로 `brief.md`로 옮긴다(맨 위에 "브랜드 규칙: brand/RIAN.md, 사실: brand/facts.md"). `(없음)` 항목만 필요할 때 묻는다.
 - 지시서의 사실이 facts.md 와 다르면 진행 전에 사장님께 묻는다. 빠진 것이 있으면 한 번에 묻는다(AskUserQuestion).
