@@ -14,6 +14,8 @@ export async function notify({ event, title, message, path = "", priority = 4, t
   if (event && Array.isArray(s.events) && !s.events.includes(event)) return { sent: false, reason: "이 종류는 알림 끔: " + event };
   const server = String(s.ntfyServer || "https://ntfy.sh").replace(/\/+$/, "");
   // 한글 제목은 HTTP 헤더에 그대로 못 넣으므로, ntfy 가 받는 주소 뒤 쿼리(?title=…)로 보낸다
+  // 조용한 시간(notify.quietHours ["22:00","08:00"]): 급한 것(5)만 소리, 나머지는 소리 없이(1)
+  if (priority < 5 && inQuiet(s.quietHours)) priority = 1;
   const q = new URLSearchParams({ title: String(title || "").replace(/[\r\n]+/g, " ").slice(0, 120), priority: String(priority) });
   if (tags.length) q.set("tags", tags.join(","));
   if (s.officeUrl) q.set("click", String(s.officeUrl).replace(/\/+$/, "") + "/" + path);
@@ -23,6 +25,13 @@ export async function notify({ event, title, message, path = "", priority = 4, t
   } catch (e) {
     return { sent: false, reason: "알림 서버에 닿지 못함: " + e.message };
   }
+}
+
+export function inQuiet(q, d = new Date()) {
+  if (!Array.isArray(q) || q.length !== 2) return false;
+  const m = (t) => { const [h, mm] = String(t).split(":").map(Number); return h * 60 + (mm || 0); };
+  const n = d.getHours() * 60 + d.getMinutes(), a = m(q[0]), b = m(q[1]);
+  return a <= b ? n >= a && n < b : n >= a || n < b;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

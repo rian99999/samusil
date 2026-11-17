@@ -12,6 +12,7 @@ import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { publicSetup } from "./secrets.mjs";
+import { startWatcher } from "./watch.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
@@ -197,5 +198,6 @@ http.createServer((req, res) => {
   for (const ip of ips) console.log(`같은 와이파이의 휴대폰에서: http://${ip}:${PORT}`);
   let st = {};
   try { st = publicSetup(); } catch (e) { console.log("연결 정보 파일 오류: " + e.message); }
+  if (st.notify) startWatcher(30000);
   console.log(`휴대폰 알림: ${st.notify ? "켜짐" : "꺼짐 (office.secrets.json 의 notify.ntfyTopic)"} · 게시 연결: 인스타 ${st.instagram ? "있음" : "없음"} / 스레드 ${st.threads ? "있음" : "없음"}${PIN ? "" : " (게시는 --pin 필요)"}`);
 });

@@ -5,3 +5,4 @@ office-state.json
 office-state.json.lock/
 *.tmp
 office.secrets.json
+office-notify-log.json

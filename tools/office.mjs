@@ -12,6 +12,7 @@
 //   node tools/office.mjs decide <결재id> approve|revise [--note "의견"]  # 승인/수정 요청 (화면이 쓰는 명령)
 //   node tools/office.mjs wait-approval <결재id> [--timeout 분]           # 결정이 날 때까지 기다림
 //   node tools/office.mjs close <결재id>                                  # 결재 정리
+//   node tools/office.mjs alert "제목" [--message 내용] [--urgent yes] [--path #a3]  # 사장님 휴대폰 알림
 //   node tools/office.mjs record-publish <결재id> --channel instagram|threads --status publishing|done|failed [--url 주소] [--error 내용]
 //   node tools/office.mjs task-add --text "/office-run …"     # 화면에서 보낸 업무 지시 받기 → 업무id
 //   node tools/office.mjs task-wait [--timeout 분]             # 새 업무가 올 때까지 기다렸다가 받아 감(JSON)
@@ -23,6 +24,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import { notify } from "./notify.mjs";
+import { markSent } from "./watch.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
@@ -115,7 +117,7 @@ switch (cmd) {
     });
     console.log(qid);
     const nq = await notify({ event: "question", title: `질문 ${qid} — 답이 필요합니다`, message: "사무실 화면의 질문함에서 답해 주세요.", path: "#q" , tags: ["question"] });
-    if (!nq.sent && !/주제.*없음/.test(nq.reason)) console.error("알림 못 보냄: " + nq.reason);
+    if (nq.sent) markSent(`q:${qid}:new`); else if (!/주제.*없음/.test(nq.reason)) console.error("알림 못 보냄: " + nq.reason);
     break;
   }
   case "reply": {
@@ -181,7 +183,7 @@ switch (cmd) {
     });
     console.log(aid);
     const na = await notify({ event: "approval", title: `결재 ${aid} — 확인해 주세요`, message: title.slice(0, 80), path: "#" + aid, tags: ["clipboard"] });
-    if (!na.sent && !/주제.*없음/.test(na.reason)) console.error("알림 못 보냄: " + na.reason);
+    if (na.sent) markSent(`a:${aid}:new`); else if (!/주제.*없음/.test(na.reason)) console.error("알림 못 보냄: " + na.reason);
     break;
   }
   case "decide": {
@@ -266,6 +268,21 @@ switch (cmd) {
     console.log(`게시 기록: ${id} ${ch} ${st}`);
     break;
   }
+  case "alert": {
+    // 사장님이 꼭 봐야 할 것을 바로 알린다 (보고 도착, 결정 필요, 사고 등). 감시(watch.mjs)가 놓치지 않게 기록도 남긴다.
+    const title = o._.join(" ").trim();
+    if (!title) die("알림 제목이 필요합니다: office.mjs alert \"제목\" [--message 내용] [--urgent yes] [--path #a3]");
+    const al = withLock((s) => {
+      s.alerts = s.alerts || [];
+      const x = { id: "n" + (s.nseq = (s.nseq || 0) + 1), title: title.slice(0, 100), message: String(o.message || "").slice(0, 300), path: String(o.path || ""), urgent: !!o.urgent, at: nowIso() };
+      s.alerts.push(x); s.alerts = s.alerts.slice(-50);
+      return x;
+    });
+    const r = await notify({ event: "alert", title: al.title, message: al.message || "사무실 화면에서 확인해 주세요.", path: al.path, priority: al.urgent ? 5 : 4, tags: ["bell"] });
+    if (r.sent) markSent(`x:${al.id}`);
+    console.log(r.sent ? "알림 보냄: " + al.id : "알림 기록: " + al.id + " (지금은 못 보냄: " + r.reason + ")");
+    break;
+  }
   case "close":
     withLock((s) => { s.approvals = (s.approvals || []).filter((x) => x.id !== id); });
     console.log("결재 정리: " + id);
@@ -275,5 +292,5 @@ switch (cmd) {
     console.log("초기화");
     break;
   default:
-    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 22).join("\n"));
+    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 23).join("\n"));
 }
