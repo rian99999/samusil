@@ -129,7 +129,7 @@
       <ol class="how">
         <li><b>복사하기</b>를 누릅니다.</li>
         <li>업무를 맡긴 그 <b>Claude 대화</b>에 붙여넣고 보냅니다.</li>
-        <li>실장이 답을 해당 직원에게 전달하고, 직원은 줄에서 빠져 일을 이어 갑니다.</li>
+        <li>본부장이 답을 해당 팀장·팀원에게 전달하고, 직원은 줄에서 빠져 일을 이어 갑니다.</li>
       </ol>
       <label for="qOut" class="sr">만들어진 답변</label>
       <textarea id="qOut" rows="7" readonly></textarea>
@@ -238,8 +238,8 @@
         <fieldset class="assign">
           <legend>누구에게 맡길까요?</legend>
           <div class="assign-tabs" role="radiogroup" aria-label="맡기는 방법">
-            <label class="check"><input type="radio" name="amode" value="auto" checked> 실장이 알아서</label>
-            <label class="check"><input type="radio" name="amode" value="part"> 파트로 고르기</label>
+            <label class="check"><input type="radio" name="amode" value="auto" checked> 본부장이 알아서</label>
+            <label class="check"><input type="radio" name="amode" value="part"> 팀으로 고르기</label>
             <label class="check"><input type="radio" name="amode" value="channel"> 채널·사이트로 고르기</label>
           </div>
           <p id="assignHelp" class="hint assign-help"></p>
@@ -302,7 +302,7 @@
       <ol class="how">
         <li><b>복사하기</b>를 누릅니다.</li>
         <li>Claude 앱에서 <b>samusil</b> 저장소의 Claude Code 대화를 엽니다. (주소: <a href="https://claude.ai/code" target="_blank" rel="noopener">claude.ai/code</a>)</li>
-        <li>대화창에 붙여넣고 보냅니다. 끝나면 총괄 실장이 보고합니다.</li>
+        <li>대화창에 붙여넣고 보냅니다. 끝나면 본부장이 최종결재 후 보고합니다.</li>
       </ol>
       <label for="taskOut" class="sr">만들어진 지시서</label>
       <textarea id="taskOut" rows="9" readonly></textarea>
@@ -359,6 +359,7 @@
             </tbody>
           </table>
           <p><b>사이트 연결</b>에 우리 블로그·인스타·홈페이지·경쟁사 주소를 넣고 직원을 고르면, 업무 지시서에 함께 들어가 직원이 그 사이트를 읽고 참고합니다. (읽기만 하고, 글을 올리지는 않습니다.)</p>
+          <p><b>직급:</b> 맨 위층 <b>본부장</b>이 일을 팀에 나누고, 각 층 <b>팀장</b>이 팀원에게 다시 나눕니다. <b>팀원</b>은 팀장에게, 팀장은 본부장에게 보고하고, 본부장이 최종결재한 것만 결재함에 올라옵니다.</p>
           <p>캐릭터는 남녀 6가지 3D 모습입니다. 위쪽 <b>직원 명부</b>에서 직원마다 이름과 모습을 정할 수 있습니다.</p>
           <p>사람을 <b>누르면</b> 이름, 상태, 걸린 시간이 나옵니다. (컴퓨터는 마우스를 올려도 됩니다.)</p>
         </li>

@@ -24,14 +24,14 @@
       startedAt: iso(now() - startedAgo * MIN), stateSince: iso(now() - stateAgo * MIN),
     });
     const sessions = [
-      mk("ceo", "총괄 실장", "working", 15, null, 0, "chief-reviewer"),
-      mk("design", "디자이너", "working", 22, null, 0, "designer"),
-      mk("design", "썸네일 시안", "working", 47, "s2"),        // 40분 초과 → 땀
-      mk("naver", "네이버 담당", "working", 12, null, 0, "naver-blog-marketer"),
-      mk("naver", "키워드 조사", "reporting", 9, "s4"),         // 만세 + 별
-      mk("insta", "인스타 담당", "blocked", 30, null, 7, "instagram-marketer"),       // 막힘
-      mk("insta", "릴스 대본", "idle", 20, "s6", 4),            // 커피
-      mk("threads", "스레드 담당", "idle", 40, null, 14, "threads-marketer"),       // 졸음
+      mk("ceo", "본부장", "working", 15, null, 0, "director"),
+      mk("design", "디자인 팀장", "working", 22, "s1", 0, "design-lead"),
+      mk("design", "디자인 팀원", "working", 47, "s2", 0, "designer"),           // 40분 초과 → 땀
+      mk("naver", "네이버 팀장", "working", 12, "s1", 0, "naver-lead"),
+      mk("naver", "네이버 팀원", "reporting", 9, "s4", 0, "naver-blog-marketer"),  // 만세 + 별 (팀장에게 보고)
+      mk("insta", "인스타 팀장", "blocked", 30, "s1", 7, "insta-lead"),          // 막힘
+      mk("insta", "인스타 팀원", "idle", 20, "s6", 4, "instagram-marketer"),     // 커피
+      mk("threads", "스레드 팀장", "idle", 40, "s1", 14, "threads-lead"),         // 졸음
     ];
     const card = (x, label, state) => {
       const fill = state === "done" ? "#efeaf2" : state === "now" ? "#ffffff" : "#f7f7f7";
@@ -45,9 +45,9 @@
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 250" font-family="sans-serif"><rect width="680" height="250" fill="#fafafa"/>` +
       card(10, "1 표지", "done") + card(180, "2 원인", "done") + card(350, "3 고르는 법", "now") + card(520, "4 예약 안내", "todo") + "</svg>");
     const questions = [
-      { id: "q" + (++qseq), sessionId: "s6", from: "인스타 담당", text: "브랜드 해시태그를 새로 만들까요, 기존 것을 쓸까요?", askedAt: iso(now() - 12 * MIN) },
+      { id: "q" + (++qseq), sessionId: "s6", from: "인스타 팀원", text: "브랜드 해시태그를 새로 만들까요, 기존 것을 쓸까요?", askedAt: iso(now() - 12 * MIN) },
       {
-        id: "q" + (++qseq), sessionId: "s2", from: "디자이너", text: "3번 카드 제목 색을 어떻게 할까요?", askedAt: iso(now() - 4 * MIN),
+        id: "q" + (++qseq), sessionId: "s2", from: "디자인 팀원", text: "3번 카드 제목 색을 어떻게 할까요?", askedAt: iso(now() - 4 * MIN),
         progress: { done: ["1 표지", "2 원인"], todo: ["3 고르는 법", "4 예약 안내"] },
         visual: { src: DEMO_SVG, title: "카드뉴스 시안 · 3번 카드 작업 중", pins: [{ key: "A", x: 63, y: 20 }, { key: "B", x: 63, y: 50 }] },
         options: [
@@ -58,7 +58,7 @@
     ];
     // 시연용 결재: 실제 파일 대신 내용을 함께 들고 있다
     const approvals = [{
-      id: "a1", sessionId: "s1", from: "총괄 실장", status: "pending", submittedAt: iso(now() - 6 * MIN),
+      id: "a1", sessionId: "s1", from: "본부장", status: "pending", submittedAt: iso(now() - 6 * MIN),
       title: "가을 립 톤 — 인스타 피드 원고 + 카드뉴스 시안 설계",
       files: ["work/demo/instagram.md", "work/demo/design.md"],
       preview: {
@@ -71,7 +71,7 @@
     const SUB = { design: ["카드뉴스 시안", "배너 수정"], naver: ["본문 초안", "태그 정리"], insta: ["캡션 작성", "해시태그 조사"], threads: ["타래 초안", "댓글 답변안"] };
 
     function spawn() {
-      const parents = sessions.filter((s) => !s.parentId && s.floor !== "ceo");
+      const parents = sessions.filter((s) => s.role && /-lead$/.test(s.role));
       if (!parents.length) return;
       const p = pick(parents);
       const s = mk(p.floor, pick(SUB[p.floor]), "working", 0, p.id);
@@ -89,12 +89,12 @@
       for (let i = timers.length - 1; i >= 0; i--) if (timers[i].at <= now()) { timers[i].fn(); timers.splice(i, 1); }
       for (let i = sessions.length - 1; i >= 0; i--) {
         const s = sessions[i];
-        if (s.parentId && s.state === "reporting" && now() - Date.parse(s.stateSince) > 4000) sessions.splice(i, 1);
+        if (s.parentId && !s.role && s.state === "reporting" && now() - Date.parse(s.stateSince) > 4000) sessions.splice(i, 1);
       }
-      if (Math.random() < 0.06 && sessions.filter((s) => s.parentId).length < 6) spawn();
+      if (Math.random() < 0.06 && sessions.filter((s) => s.parentId && !s.role).length < 6) spawn();
       if (Math.random() < 0.03 && questions.length < 6) ask();
       if (Math.random() < 0.04) {
-        const s = pick(sessions.filter((x) => !x.parentId && x.floor !== "ceo"));
+        const s = pick(sessions.filter((x) => x.role && /-lead$/.test(x.role)));
         const next = pick(["working", "working", "idle", "reporting", "blocked"]);
         if (s && s.state !== next) { s.state = next; s.stateSince = iso(now()); }
       }

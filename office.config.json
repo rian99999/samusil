@@ -18,35 +18,77 @@
     }
   ],
   "roles": {
-    "designer": {
+    "director": {
+      "floor": "ceo",
+      "name": "본부장",
+      "rank": "본부장",
+      "model": "opus",
+      "person": "서윤",
+      "avatar": 1
+    },
+    "naver-lead": {
+      "floor": "naver",
+      "name": "네이버 팀장",
+      "rank": "팀장",
+      "model": "sonnet",
+      "person": "지우",
+      "avatar": 3
+    },
+    "insta-lead": {
+      "floor": "insta",
+      "name": "인스타 팀장",
+      "rank": "팀장",
+      "model": "sonnet",
+      "person": "하린",
+      "avatar": 5
+    },
+    "threads-lead": {
+      "floor": "threads",
+      "name": "스레드 팀장",
+      "rank": "팀장",
+      "model": "sonnet",
+      "person": "민준",
+      "avatar": 4
+    },
+    "design-lead": {
       "floor": "design",
-      "name": "디자이너",
+      "name": "디자인 팀장",
+      "rank": "팀장",
+      "model": "sonnet",
       "person": "도윤",
       "avatar": 2
     },
     "naver-blog-marketer": {
       "floor": "naver",
-      "name": "네이버 담당",
-      "person": "지우",
-      "avatar": 3
+      "name": "네이버 팀원",
+      "rank": "팀원",
+      "model": "haiku",
+      "person": "수아",
+      "avatar": 0
     },
     "instagram-marketer": {
       "floor": "insta",
-      "name": "인스타 담당",
-      "person": "하린",
-      "avatar": 5
+      "name": "인스타 팀원",
+      "rank": "팀원",
+      "model": "haiku",
+      "person": "태오",
+      "avatar": 2
     },
     "threads-marketer": {
       "floor": "threads",
-      "name": "스레드 담당",
-      "person": "민준",
-      "avatar": 4
+      "name": "스레드 팀원",
+      "rank": "팀원",
+      "model": "haiku",
+      "person": "예린",
+      "avatar": 5
     },
-    "chief-reviewer": {
-      "floor": "ceo",
-      "name": "총괄 실장",
-      "person": "서윤",
-      "avatar": 1
+    "designer": {
+      "floor": "design",
+      "name": "디자인 팀원",
+      "rank": "팀원",
+      "model": "haiku",
+      "person": "현우",
+      "avatar": 4
     }
   },
   "sites": []

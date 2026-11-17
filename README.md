@@ -28,22 +28,26 @@ node tools/serve.mjs                # http://localhost:8080  (office-state.json 
 
 직원은 Claude Code 서브에이전트(`.claude/agents/`)이고, 이 저장소에서 Claude Code 를 열고 `/office-run 주제`로 일을 시킨다.
 
-| 층 | 직원 | 하는 일 | 결과 |
-|---|---|---|---|
-| 6F 대표실 | `chief-reviewer` 총괄 실장 | 결과물 검수(사실·규칙·일관성·완성도) 후 보고서 작성 | `reports/<작업>.md` |
-| 5F 스레드팀 | `threads-marketer` | 단독 글 3안, 타래, 댓글 답변안 | `work/<작업>/threads.md` |
-| 4F 인스타그램팀 | `instagram-marketer` | 캡션, 카드뉴스 문구, 릴스 대본, 해시태그 | `work/<작업>/instagram.md` |
-| 3F 네이버 블로그팀 | `naver-blog-marketer` | 키워드, 제목 3안, 본문, 태그 | `work/<작업>/naver.md` |
-| 2F 디자인팀 | `designer` | 색·크기·이미지별 시안 설계서 (Figma 연결 시 시안) | `work/<작업>/design.md` |
+### 직급 구조: 본부장 → 팀장 → 팀원
 
-진행 순서(`.claude/skills/office-run/SKILL.md`): 일감 정리(brief) → 마케터 3명 동시 작업 → 디자이너 → 총괄 검수 → 사장님 보고.
-배정은 메인 대화가 맡는다(서브에이전트는 다른 서브에이전트를 부를 수 없기 때문).
+| 직급 | 서브에이전트 | 모델 | 하는 일 | 남기는 파일 |
+|---|---|---|---|---|
+| 본부장 (6F 대표실, 서윤) | `director` | opus | 지시서를 팀별로 분배 · 팀장 보고 검수 · **최종결재**(승인/반려) | `plan.md`, `reports/<작업>.md` |
+| 팀장 (각 층: 지우·하린·민준·도윤) | `team-lead` | sonnet | 팀원 일감표 · 팀원 결과 검토/반려 · 합쳐서 최종 결과 · 팀 보고 | `<팀>/tasks.md`, `review.md`, `report.md`, `naver.md` 등 |
+| 팀원 (각 층: 수아·태오·예린·현우) | `naver-blog-marketer` · `instagram-marketer` · `threads-marketer` · `designer` | haiku | 팀장이 준 일 1개씩 | `<팀>/parts/T번호-*.md` |
+
+흐름: 사장님 지시 → 본부장 분배 → 팀장이 팀원에게 1~3개로 나눔 → 팀원 → 팀장 보고(반려 최대 2회) → 본부장 보고·**최종결재**(반려 최대 2회) → 사장님 결재함.
+모델은 `.claude/agents/<이름>.md` 맨 위 `model:` 줄로 정한다. 바꾸려면 그 한 줄만 고친다.
+Claude Code 의 서브에이전트는 다른 서브에이전트를 부를 수 없다. 그래서 메인 대화가 **비서**로서 순서대로 사람을 불러 주고, 지시·보고 내용은 파일로 위아래로 오간다. 비서는 쓰거나 결재하지 않는다.
+
 **이 구조는 원고·시안까지만 만든다. 네이버·인스타·스레드에 실제로 올리는 기능은 없다.**
 
 사무실 화면 기록은 `tools/office.mjs`가 한다:
 
 ```bash
-node tools/office.mjs start naver-1 --role naver-blog-marketer --parent chief-1   # 출근
+node tools/office.mjs start director-1 --role director                              # 본부장 출근
+node tools/office.mjs start lead-naver-1 --role naver-lead --parent director-1      # 팀장 출근
+node tools/office.mjs start naver-1 --role naver-blog-marketer --parent lead-naver-1 # 팀원 출근
 node tools/office.mjs state naver-1 blocked                                        # 막힘
 node tools/office.mjs ask naver-1 "가격을 넣을까요?"                                # 대표실 앞 줄
 node tools/office.mjs answer q1 ; node tools/office.mjs end naver-1                # 답변 / 퇴근
@@ -138,7 +142,7 @@ https://www.figma.com/design/gpxpF7f9FKGPE3HEPLpRss
 1. 컴퓨터에서 `node tools/serve.mjs` 실행 → 창에 `같은 와이파이의 휴대폰에서: http://192.168.x.x:8080` 이 나온다.
 2. 휴대폰을 같은 와이파이에 연결하고 그 주소를 연다.
 3. 아이폰(Safari): 공유 버튼 → **홈 화면에 추가** / 안드로이드(Chrome): ⋮ 메뉴 → **홈 화면에 추가**.
-4. 바탕화면에 서윤(총괄 실장) 캐릭터 아이콘 'AI 사무실'이 생기고, 누르면 주소창 없이 바로 열린다(`manifest.webmanifest`).
+4. 바탕화면에 서윤(본부장) 캐릭터 아이콘 'AI 사무실'이 생기고, 누르면 주소창 없이 바로 열린다(`manifest.webmanifest`).
 
 - 컴퓨터가 꺼지거나 `serve.mjs`를 멈추면 화면은 '확인 중'으로 멈춘다. 집 밖(다른 인터넷)에서는 열리지 않는다.
 - 시연 링크(claude.ai 페이지)도 같은 방법으로 홈 화면에 추가할 수 있지만, 아이콘은 claude.ai 기본 모양이고 시연 자료만 나온다.
@@ -147,21 +151,22 @@ https://www.figma.com/design/gpxpF7f9FKGPE3HEPLpRss
 
 모든 직원은 일을 시작할 때 Claude Code **스킬**을 불러 쓰고, 끝내기 전에 **자동 브랜드 검사**를 통과해야 한다. 아래 스킬은 모두 설치를 확인했다(2026.11).
 
-| 직원 | 스킬 (순서대로) |
+| 직원 (팀원은 채널 이름) | 스킬 (순서대로) |
 |---|---|
 | 모두 | `rian-brand` (이 저장소의 스킬: 브랜드 규칙 + 검사 순서) |
 | 네이버 | `marketing:seo-audit`(키워드 조사만) · `marketing:draft-content` · `brand-voice:brand-voice-enforcement` · `design:ux-copy` · (경쟁사 사이트 연결 시) `marketing:competitive-brief` |
 | 인스타 | `marketing:content-creation` · `marketing:draft-content` · `brand-voice:brand-voice-enforcement` · `design:ux-copy` |
 | 스레드 | `marketing:draft-content` · `marketing:content-creation` · `brand-voice:brand-voice-enforcement` · `design:ux-copy` |
 | 디자이너 | Figma(`figma:figma-use`·`figma-generate-design`) 또는 Canva(`canva:edit-design`·`resize-for-social-media`·`brand-check`) · `design:design-critique` · `design:accessibility-review` · `design:ux-copy` |
-| 총괄 실장 | `marketing:brand-review` · `brand-voice:brand-voice-enforcement` · `design:design-critique` · `design:accessibility-review` |
-| 업무 배정(메인 대화) | `rian-brand` · `marketing:campaign-plan` |
+| 본부장 | `marketing:campaign-plan`(분배) · `marketing:brand-review` · `brand-voice:brand-voice-enforcement` · `design:design-critique` · `design:accessibility-review` |
+| 팀장 | `marketing:brand-review` · `brand-voice:brand-voice-enforcement` (디자인팀: `design:design-critique` · `design:accessibility-review`) |
+| 비서(메인 대화) | `rian-brand` |
 
 - **쓰지 않는 스킬:** `brand-guidelines`(Anthropic 브랜드 색·서체), `theme-factory`, `algorithmic-art` — RIAN 과 충돌.
 - `brand-voice` 스킬은 `.claude/brand-voice-guidelines.md`를 찾는다 → `brand/RIAN.md`로 연결해 두었다(바로가기). 설정은 `.claude/brand-voice.local.md`(엄격하게, 이유 설명).
 - marketing 스킬이 "먼저 물어보라"는 단계는 직원이 brief·brand 파일로 채우고, 없으면 `[확인 필요]`. SEO 도구(Ahrefs)는 연결돼 있지 않아 검색량 숫자는 추정으로만 쓴다.
-- 자동 검사: `node tools/brand-check.mjs work/<작업>/*.md` — 오류가 있으면 실장 검수로 넘어가지 않는다.
-- 결과 파일 맨 위에 `사용한 스킬:`과 `브랜드 검사:` 줄이 남고, 실장 보고서에 직원별 스킬 사용 표가 들어간다.
+- 자동 검사: `node tools/brand-check.mjs work/<작업>/*.md` — 오류가 있으면 본부장 결재로 넘어가지 않는다.
+- 결과 파일 맨 위에 `사용한 스킬:`과 `브랜드 검사:` 줄이 남고, 본부장 보고서에 직원별 스킬 사용 표가 들어간다.
 
 ## 브랜드: RIAN
 
@@ -174,7 +179,7 @@ https://www.figma.com/design/gpxpF7f9FKGPE3HEPLpRss
 
 ## 시안·자료 결재 (컨펌)
 
-실장 검수가 끝난 결과물은 **결재함**에 올라온다. 대표실 앞에 📋를 든 직원이 서고 화면 아래에 **결재 대기 N** 버튼이 뜬다.
+본부장 최종결재가 끝난 결과물은 **결재함**에 올라온다. 대표실 앞에 📋를 든 직원이 서고 화면 아래에 **결재 대기 N** 버튼이 뜬다.
 
 1. 버튼(또는 줄 선 직원)을 누르면 결재 목록 → 하나를 누르면 원고(마크다운 표·목록까지)와 시안 그림을 그 자리에서 본다.
 2. **승인** 또는 **수정 요청**(무엇을 고칠지 의견 필수)을 누른다 → 직원에게 바로 전달된다.

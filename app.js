@@ -35,12 +35,17 @@
   const charUrl = (n) => `assets/chars/c${n}.png`;
   // 직책별 기본 이름·모습. 자료(status.json)의 roles 가 있으면 그것이 먼저, 이 브라우저에서 고친 값이 가장 먼저.
   const DEFAULT_ROLES = {
-    "chief-reviewer": { name: "총괄 실장", person: "서윤", avatar: 1 },
-    "designer": { name: "디자이너", person: "도윤", avatar: 2 },
-    "naver-blog-marketer": { name: "네이버 담당", person: "지우", avatar: 3 },
-    "instagram-marketer": { name: "인스타 담당", person: "하린", avatar: 5 },
-    "threads-marketer": { name: "스레드 담당", person: "민준", avatar: 4 },
+    "director": { name: "본부장", person: "서윤", avatar: 1 },
+    "naver-lead": { name: "네이버 팀장", person: "지우", avatar: 3 },
+    "insta-lead": { name: "인스타 팀장", person: "하린", avatar: 5 },
+    "threads-lead": { name: "스레드 팀장", person: "민준", avatar: 4 },
+    "design-lead": { name: "디자인 팀장", person: "도윤", avatar: 2 },
+    "naver-blog-marketer": { name: "네이버 팀원", person: "수아", avatar: 0 },
+    "instagram-marketer": { name: "인스타 팀원", person: "태오", avatar: 2 },
+    "threads-marketer": { name: "스레드 팀원", person: "예린", avatar: 5 },
+    "designer": { name: "디자인 팀원", person: "현우", avatar: 4 },
   };
+
   const ROSTER_KEY = "office-roster";
   let rosterLocal = {};
   try { rosterLocal = JSON.parse(localStorage.getItem(ROSTER_KEY) || "{}") || {}; } catch (_) {}
@@ -969,7 +974,7 @@
   function saveSites(list) { sitesLocal = list; try { localStorage.setItem(SITES_KEY, JSON.stringify(list)); } catch (_) {} }
   function roleName(role) { if (role === "*") return "모든 직원"; const r = roleInfo(role); return r ? (r.person ? `${r.person}(${r.title})` : r.title) : role; }
   function sitesForOrder(channels) {
-    return sitesForRoles(new Set(["chief-reviewer", ...channels.map((c) => CHANNEL_ROLE[c]).filter(Boolean)]));
+    return sitesForRoles(new Set(["director", ...channels.map((c) => CHANNEL_ROLE[c]).filter(Boolean)]));
   }
   function sitesForRoles(roles) {
     const pick = siteList().filter((x) => x.roles.includes("*") || x.roles.some((r) => roles.has(r)));
@@ -1122,27 +1127,34 @@
   }
   form.querySelectorAll("input[name=kind]").forEach((r) => r.addEventListener("change", showKind));
 
-  // 일반 업무: 맡길 곳 고르기. 실장이 알아서 / 파트(직원)로 / 채널·연결한 사이트로
+  // 일반 업무: 맡길 곳 고르기. 본부장이 알아서 / 파트(직원)로 / 채널·연결한 사이트로
   const amodeOf = () => (form.querySelector("input[name=amode]:checked") || {}).value || "auto";
   const CHANNELS = Object.keys(CHANNEL_ROLE).filter((c) => c !== "디자인");
+  // 직급: 본부장 → 팀장 → 팀원. 팀을 고르면 그 팀장과 팀원이 함께 맡는다.
+  const TEAMS = [
+    { id: "naver", name: "네이버 블로그팀", lead: "naver-lead", staff: "naver-blog-marketer" },
+    { id: "insta", name: "인스타그램팀", lead: "insta-lead", staff: "instagram-marketer" },
+    { id: "threads", name: "스레드팀", lead: "threads-lead", staff: "threads-marketer" },
+    { id: "design", name: "디자인팀", lead: "design-lead", staff: "designer" },
+  ];
   function assignOptions(mode) {
     if (mode === "part") {
-      return roleKeys().map((r) => ({ value: "role:" + r, label: roleName(r), roles: [r] }));
+      return TEAMS.map((t) => ({ value: "team:" + t.id, label: t.name, sub: "팀장 " + roleName(t.lead) + " · 팀원 " + roleName(t.staff), roles: [t.lead, t.staff] }));
     }
     if (mode === "channel") {
-      const ch = CHANNELS.map((c) => ({ value: "ch:" + c, label: c, sub: roleName(CHANNEL_ROLE[c]), roles: [CHANNEL_ROLE[c]] }));
+      const ch = CHANNELS.map((c) => { const t = TEAMS.find((x) => x.staff === CHANNEL_ROLE[c]); return { value: "ch:" + c, label: c, sub: t.name + " (팀장 " + roleName(t.lead) + ")", roles: [t.lead, t.staff] }; });
       const sites = siteList().map((x) => ({
         value: "site:" + x.id, label: x.name, sub: PURPOSES[x.purpose] + " · " + (x.roles.includes("*") ? "모든 직원" : x.roles.map(roleName).join(", ")),
-        roles: x.roles.includes("*") ? ["chief-reviewer"] : x.roles, site: x,
+        roles: x.roles.includes("*") ? ["director"] : x.roles, site: x,
       }));
       return [...ch, ...sites];
     }
     return [];
   }
   const ASSIGN_HELP = {
-    auto: "총괄 실장이 할 일을 보고 맞는 직원에게 나눠 맡깁니다.",
-    part: "일할 직원(파트)을 고르세요. 여러 명 고르면 함께 합니다.",
-    channel: "어느 채널·사이트 일인지 고르세요. 그 채널 담당 직원이 맡고, 고른 사이트 주소가 지시서에 들어갑니다.",
+    auto: "본부장이 할 일을 보고 맞는 팀에 나눠 맡깁니다. 팀장이 팀원에게 다시 나눕니다.",
+    part: "일할 팀을 고르세요. 팀장이 팀원에게 일을 나누고, 본부장이 최종결재합니다.",
+    channel: "어느 채널·사이트 일인지 고르세요. 그 채널 팀(팀장·팀원)이 맡고, 고른 사이트 주소가 지시서에 들어갑니다.",
   };
   let assignPicked = [];
   function renderAssign() {
@@ -1168,9 +1180,9 @@
   /** 지시서에 넣을 담당 줄과 참고 사이트 */
   function assignLines() {
     const mode = amodeOf();
-    if (mode === "auto") return { lines: ["담당: 총괄 실장이 정함"], roles: new Set(["chief-reviewer"]) };
+    if (mode === "auto") return { lines: ["담당: 본부장이 정함"], roles: new Set(["director"]) };
     const picked = assignOptions(mode).filter((o) => assignPicked.includes(o.value));
-    const roles = new Set(["chief-reviewer", ...picked.flatMap((o) => o.roles)]);
+    const roles = new Set(["director", ...picked.flatMap((o) => o.roles)]);
     const people = [...new Set(picked.flatMap((o) => o.roles))].map(roleName);
     const lines = [`담당: ${people.join(", ")}`];
     if (mode === "channel") {
@@ -1213,13 +1225,13 @@
       $("#gWorkErr").hidden = true;
       if (amodeOf() !== "auto" && !assignPicked.length) { $("#assignErr").hidden = false; return; }
       const asg = assignLines();
-      // 일반 업무: SNS 채널 없이 총괄 실장이 맞는 직원에게 나눠 맡긴다
+      // 일반 업무: SNS 채널 없이 본부장이 맞는 팀에 나눠 맡긴다
       $("#taskOut").value = [
         "/office-run",
         "[업무 지시서 · 일반 업무]",
         amodeOf() === "auto"
-          ? "업무 종류: 일반 업무 (SNS 글이 아님. 채널별 글을 만들지 말고, 총괄 실장이 할 일에 맞는 직원을 정해 맡긴 뒤 결과를 보고)"
-          : "업무 종류: 일반 업무 (SNS 글이 아님. 아래 담당 직원만 일하고, 총괄 실장이 결과를 확인해 보고)",
+          ? "업무 종류: 일반 업무 (SNS 글이 아님. 채널별 글을 만들지 말고, 본부장이 할 일에 맞는 팀을 정해 맡긴 뒤 최종결재)"
+          : "업무 종류: 일반 업무 (SNS 글이 아님. 아래 담당 팀만 일하고, 팀장 검토 → 본부장 최종결재)",
         ...asg.lines,
         `할 일: ${$("#gWork").value.trim()}`,
         `결과물 모양: ${v("gResult")}`,
