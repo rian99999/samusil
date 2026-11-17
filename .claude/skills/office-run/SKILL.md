@@ -1,6 +1,6 @@
 ---
 name: office-run
-description: AI 사무실의 직급 구조(본부장 opus → 팀장 sonnet → 팀원 haiku)로 일을 진행한다. 본부장이 팀에 분배하고, 팀장이 팀원에게 나누고, 팀원→팀장→본부장 순서로 보고해 본부장이 최종결재한 뒤 사장님 결재함에 올린다. "마케팅 해줘", "직원들한테 시켜", "/office-run 주제" 같은 요청에 사용.
+description: AI 사무실의 직급 구조(본부장 opus → 팀장 opus → 팀원 sonnet)로 일을 진행한다. 본부장이 팀에 분배하고, 팀장이 팀원에게 나누고, 팀원→팀장→본부장 순서로 보고해 본부장이 최종결재한 뒤 사장님 결재함에 올린다. "마케팅 해줘", "직원들한테 시켜", "/office-run 주제" 같은 요청에 사용.
 ---
 # AI 사무실 업무 진행 (직급제)
 
@@ -8,10 +8,10 @@ description: AI 사무실의 직급 구조(본부장 opus → 팀장 sonnet → 
 | 직급 | 서브에이전트 | 모델 | 하는 일 |
 |---|---|---|---|
 | 본부장 (대표실) | `director` | opus | 팀별 분배(plan.md) · 최종결재 · 사장님 보고서 |
-| 팀장 (각 층) | `team-lead` (팀 이름을 함께 준다) | sonnet | 팀원 일감표(tasks.md) · 팀원 결과 검토/반려 · 합쳐서 최종 결과 파일 · 팀 보고 |
-| 팀원 (각 층) | `naver-blog-marketer` · `instagram-marketer` · `threads-marketer` · `designer` | haiku | 팀장이 준 일 한 개씩 → `<팀>/parts/` |
+| 팀장 (각 층) | `team-lead` (팀 이름을 함께 준다) | opus | 팀원 일감표(tasks.md) · 팀원 결과 검토/반려 · 합쳐서 최종 결과 파일 · 팀 보고 |
+| 팀원 (각 층) | `naver-blog-marketer` · `instagram-marketer` · `threads-marketer` · `designer` | sonnet | 팀장이 준 일 한 개씩 → `<팀>/parts/` |
 
-모델은 각 에이전트 파일 맨 위 `model:` 줄에 있다. 바꾸려면 그 줄만 고친다(`haiku`·`sonnet`·`opus`).
+모델은 각 에이전트 파일 맨 위 `model:` 줄에 있다. 바꾸려면 그 줄만 고친다(`haiku`·`sonnet`·`opus`). 지금: 본부장 opus · 팀장 opus · 팀원 sonnet.
 
 **보고·지시는 반드시 위아래로만:** 사장님 → 본부장 → 팀장 → 팀원, 보고는 팀원 → 팀장 → 본부장 → 사장님.
 Claude Code 에서 서브에이전트는 다른 서브에이전트를 부를 수 없다. 그래서 이 대화(메인 세션)는 **비서**다: 순서대로 사람을 불러 주고, 서로 주고받는 내용은 **파일**로 전한다. 비서는 내용을 직접 쓰거나 고치거나 결재하지 않는다.

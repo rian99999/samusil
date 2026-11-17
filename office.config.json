@@ -30,7 +30,7 @@
       "floor": "naver",
       "name": "네이버 팀장",
       "rank": "팀장",
-      "model": "sonnet",
+      "model": "opus",
       "person": "지우",
       "avatar": 3
     },
@@ -38,7 +38,7 @@
       "floor": "insta",
       "name": "인스타 팀장",
       "rank": "팀장",
-      "model": "sonnet",
+      "model": "opus",
       "person": "하린",
       "avatar": 5
     },
@@ -46,7 +46,7 @@
       "floor": "threads",
       "name": "스레드 팀장",
       "rank": "팀장",
-      "model": "sonnet",
+      "model": "opus",
       "person": "민준",
       "avatar": 4
     },
@@ -54,7 +54,7 @@
       "floor": "design",
       "name": "디자인 팀장",
       "rank": "팀장",
-      "model": "sonnet",
+      "model": "opus",
       "person": "도윤",
       "avatar": 2
     },
@@ -62,7 +62,7 @@
       "floor": "naver",
       "name": "네이버 팀원",
       "rank": "팀원",
-      "model": "haiku",
+      "model": "sonnet",
       "person": "수아",
       "avatar": 0
     },
@@ -70,7 +70,7 @@
       "floor": "insta",
       "name": "인스타 팀원",
       "rank": "팀원",
-      "model": "haiku",
+      "model": "sonnet",
       "person": "태오",
       "avatar": 2
     },
@@ -78,7 +78,7 @@
       "floor": "threads",
       "name": "스레드 팀원",
       "rank": "팀원",
-      "model": "haiku",
+      "model": "sonnet",
       "person": "예린",
       "avatar": 5
     },
@@ -86,7 +86,7 @@
       "floor": "design",
       "name": "디자인 팀원",
       "rank": "팀원",
-      "model": "haiku",
+      "model": "sonnet",
       "person": "현우",
       "avatar": 4
     }
