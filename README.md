@@ -33,7 +33,7 @@ node tools/serve.mjs                # http://localhost:8080  (office-state.json 
 | 직급 | 서브에이전트 | 모델 | 하는 일 | 남기는 파일 |
 |---|---|---|---|---|
 | 본부장 (6F 대표실, 서윤) | `director` | opus | 지시서를 팀별로 분배 · 팀장 보고 검수 · **최종결재**(승인/반려) | `plan.md`, `reports/<작업>.md` |
-| 팀장 (각 층: 지우·하린·민준·도윤) | `team-lead` | opus | 팀원 일감표 · 팀원 결과 검토/반려 · 합쳐서 최종 결과 · 팀 보고 | `<팀>/tasks.md`, `review.md`, `report.md`, `naver.md` 등 |
+| 팀장 (각 층: 지우·하린·민준·도윤) | `team-lead` | sonnet | 팀원 일감표 · 팀원 결과 검토/반려 · 합쳐서 최종 결과 · 팀 보고 | `<팀>/tasks.md`, `review.md`, `report.md`, `naver.md` 등 |
 | 팀원 (각 층: 수아·태오·예린·현우) | `naver-blog-marketer` · `instagram-marketer` · `threads-marketer` · `designer` | sonnet | 팀장이 준 일 1개씩 | `<팀>/parts/T번호-*.md` |
 
 흐름: 사장님 지시 → 본부장 분배 → 팀장이 팀원에게 1~3개로 나눔 → 팀원 → 팀장 보고(반려 최대 2회) → 본부장 보고·**최종결재**(반려 최대 2회) → 사장님 결재함.

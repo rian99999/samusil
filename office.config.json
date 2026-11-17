@@ -30,7 +30,7 @@
       "floor": "naver",
       "name": "네이버 팀장",
       "rank": "팀장",
-      "model": "opus",
+      "model": "sonnet",
       "person": "지우",
       "avatar": 3
     },
@@ -38,7 +38,7 @@
       "floor": "insta",
       "name": "인스타 팀장",
       "rank": "팀장",
-      "model": "opus",
+      "model": "sonnet",
       "person": "하린",
       "avatar": 5
     },
@@ -46,7 +46,7 @@
       "floor": "threads",
       "name": "스레드 팀장",
       "rank": "팀장",
-      "model": "opus",
+      "model": "sonnet",
       "person": "민준",
       "avatar": 4
     },
@@ -54,7 +54,7 @@
       "floor": "design",
       "name": "디자인 팀장",
       "rank": "팀장",
-      "model": "opus",
+      "model": "sonnet",
       "person": "도윤",
       "avatar": 2
     },
