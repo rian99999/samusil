@@ -4,7 +4,7 @@
 //   node tools/office.mjs start <id> --role naver-blog-marketer [--name 이름] [--floor 층] [--parent 상위id]
 //   node tools/office.mjs state <id> working|blocked|reporting|idle
 //   node tools/office.mjs end   <id>                 # 퇴근
-//   node tools/office.mjs ask   <id> "질문 내용"      # 대표실 앞 줄에 섬 → 질문 id 출력
+//   node tools/office.mjs ask   <id> "질문 내용" [--option "A|라벨|어디에|work/…/a.png" …] [--visual work/…/지금.png]  # 질문(안마다 예시 그림)
 //   node tools/office.mjs reply  <질문id> --text "답"  # 사장님 답 기록 (화면의 '보내기'가 쓰는 명령)
 //   node tools/office.mjs wait   <질문id> [--timeout 분] # 답이 올 때까지 기다렸다가 답을 출력
 //   node tools/office.mjs answer <질문id>             # 줄에서 빠짐(처리 끝)
@@ -31,6 +31,14 @@ const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
 const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
 const STATES = ["working", "blocked", "reporting", "idle"];
 const nowIso = () => new Date().toISOString();
+// 질문에 붙이는 예시 그림: work/ 안의 그림 파일만
+function checkImg(f) {
+  const rel = path.relative(ROOT, path.resolve(ROOT, String(f))).split(path.sep).join("/");
+  if (!/^work\//.test(rel)) die("예시 그림은 work/ 안에 있어야 합니다: " + f);
+  if (!/\.(png|jpe?g|webp|svg)$/i.test(rel)) die("예시 그림은 png·jpg·webp·svg 만: " + f);
+  if (!fs.existsSync(path.join(ROOT, rel))) die("예시 그림 파일 없음: " + f);
+  return rel;
+}
 const sha256 = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 
 function load() {
@@ -109,9 +117,17 @@ switch (cmd) {
   case "ask": {
     const text = o._.slice(1).join(" ");
     if (!text) die("질문 내용이 필요합니다");
+    // 고를 안: --option "A|라벨|어디에(선택)|예시그림 경로(선택)"  (여러 번)
+    const opts = [].concat(o.option || []).map((v) => {
+      const [key, label, where, image] = String(v).split("|").map((x) => (x || "").trim());
+      if (!key || !label) die("--option 은 \"A|라벨|어디에|work/…/a.png\" 모양이어야 합니다: " + v);
+      return { key: key.slice(0, 2), label: label.slice(0, 80), ...(where ? { where: where.slice(0, 80) } : {}), ...(image ? { image: checkImg(image) } : {}) };
+    });
     const qid = withLock((s) => {
       const x = s.sessions.find((y) => y.id === id);
-      const q = { id: "q" + (++s.seq), sessionId: id, from: x ? x.name : id, text, askedAt: nowIso() };
+      const q = { id: "q" + (++s.seq), sessionId: id, from: x ? x.name : id, text, askedAt: nowIso(),
+        ...(opts.length ? { options: opts } : {}),
+        ...(o.visual ? { visual: { src: checkImg(o.visual), title: String(o["visual-title"] || "지금까지 만든 것").slice(0, 80) } } : {}) };
       s.questions.push(q);
       return q.id;
     });

@@ -48,7 +48,7 @@ function reply(id, text) {
   });
 }
 // 결재할 자료 보여 주기: work/ 와 reports/ 안의 글·그림만, 그 밖은 막는다
-const VIEW_TYPES = { ".md": "text/plain; charset=utf-8", ".json": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
+const VIEW_TYPES = { ".md": "text/plain; charset=utf-8", ".json": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
 function fileApi(url, res) {
   const rel = String(url.searchParams.get("path") || "").replace(/\\/g, "/");
   const abs = path.resolve(ROOT, rel);
@@ -61,6 +61,8 @@ function fileApi(url, res) {
   fs.readFile(real, (err, buf) => {
     if (err) { res.writeHead(404); return res.end("not found"); }
     const head = { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff" };
+    // SVG 는 글자로 된 그림이라 안에 스크립트를 넣을 수 있다 → 그림으로만 보이게 막는다
+    if (type === "image/svg+xml") head["content-security-policy"] = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox";
     if (url.searchParams.get("download")) head["content-disposition"] = `attachment; filename*=UTF-8''${encodeURIComponent(path.basename(real))}`;
     res.writeHead(200, head);
     res.end(buf);

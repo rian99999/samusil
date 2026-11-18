@@ -675,11 +675,20 @@
     pill.hidden = !qs.length;
     $("#askCount").textContent = qs.length;
   }
+  // 질문은 한 번에 하나씩(한 사람씩) 보여 준다. 오래 기다린 질문부터.
+  let qIdx = 0;
   function renderQbox(focusId) {
     const list = $("#qList");
     list.textContent = "";
-    const qs = currentQuestions();
-    $("#qEmpty").hidden = qs.length > 0;
+    const all = currentQuestions();
+    if (focusId != null) { const i = all.findIndex((q) => String(q.id) === String(focusId)); if (i >= 0) qIdx = i; }
+    qIdx = Math.max(0, Math.min(qIdx, all.length - 1));
+    const qs = all.length ? [all[qIdx]] : [];
+    $("#qEmpty").hidden = all.length > 0;
+    $("#qStep").hidden = all.length < 2;
+    $("#qStepText").textContent = all.length ? `질문 ${qIdx + 1} / ${all.length}` : "";
+    $("#qPrev").disabled = qIdx <= 0;
+    $("#qNext").disabled = qIdx >= all.length - 1;
     $("#qMake").disabled = !qs.length;
     $("#qSend").disabled = !qs.length;
     const nowSrv = ms(data && data.updatedAt) ?? Date.now();
@@ -712,6 +721,13 @@
         for (const o of opts) {
           const b = el("button", "q-opt");
           b.type = "button";
+          if (typeof o.image === "string" && o.image) {
+            // 안마다 예시 그림: 보고 고를 수 있게
+            b.classList.add("has-img");
+            const im = el("img", "q-opt-img"); im.src = visualSrc(o.image); im.alt = `${o.key}안 예시`; im.loading = "lazy";
+            im.addEventListener("error", () => im.replaceWith(el("span", "q-opt-noimg", "예시 그림을 열지 못함")));
+            b.append(im);
+          }
           b.append(el("b", "q-opt-key", String(o.key).slice(0, 2)), el("span", null, o.label));
           if (o.where) b.append(el("small", null, o.where));
           b.setAttribute("aria-pressed", String(ta.value.startsWith(String(o.key) + "안:")));
@@ -744,9 +760,12 @@
   $("#askPill").addEventListener("click", () => openQbox());
   $("#qClose").addEventListener("click", () => qbox.close());
   $("#qBack").addEventListener("click", () => qbox.classList.remove("done"));
+  const shownQuestions = () => { const all = currentQuestions(); return all.length ? [all[Math.min(qIdx, all.length - 1)]] : []; };
+  $("#qPrev").addEventListener("click", () => { qIdx--; $("#qSendMsg").textContent = ""; $("#qErr").textContent = ""; renderQbox(); });
+  $("#qNext").addEventListener("click", () => { qIdx++; $("#qSendMsg").textContent = ""; $("#qErr").textContent = ""; renderQbox(); });
   $("#qMake").addEventListener("click", () => {
-    const qs = currentQuestions().filter((q) => (answers[q.id] || "").trim());
-    if (!qs.length) { $("#qErr").textContent = "답을 하나 이상 적어 주세요."; return; }
+    const qs = shownQuestions().filter((q) => (answers[q.id] || "").trim());
+    if (!qs.length) { $("#qErr").textContent = "답을 고르거나 적어 주세요."; return; }
     $("#qErr").textContent = "";
     const text = ["[답변]", ...qs.flatMap((q) => [`${q.id} (${asker(q)}) ${q.text || ""}`, `→ ${answers[q.id].trim()}`])].join("\n");
     $("#qOut").value = text;
@@ -754,8 +773,8 @@
     qbox.classList.add("done");
   });
   $("#qSend").addEventListener("click", async () => {
-    const qs = currentQuestions().filter((q) => (answers[q.id] || "").trim());
-    if (!qs.length) { $("#qErr").textContent = "답을 하나 이상 적어 주세요."; return; }
+    const qs = shownQuestions().filter((q) => (answers[q.id] || "").trim());
+    if (!qs.length) { $("#qErr").textContent = "답을 고르거나 적어 주세요."; return; }
     $("#qErr").textContent = "";
     const btn = $("#qSend");
     btn.disabled = true; btn.textContent = "보내는 중…";
@@ -774,15 +793,16 @@
       }
     } catch (e) {
       $("#qSendMsg").textContent = `보내지 못했습니다(${e.message}). 아래 '복사해서 대화에 붙여넣기'로 보내 주세요.`;
-      btn.disabled = false; btn.textContent = "답변 보내기";
+      btn.disabled = false; btn.textContent = "이 답 보내기";
       return;
     }
     const ok = results.filter((x) => x.ok), bad = results.filter((x) => !x.ok);
     for (const x of ok) { sentIds.add(String(x.id)); delete answers[x.id]; }
     saveAnswers();
-    btn.disabled = false; btn.textContent = "답변 보내기";
+    btn.disabled = false; btn.textContent = "이 답 보내기";
+    const left = currentQuestions().length;
     $("#qSendMsg").textContent =
-      (ok.length ? `${ok.length}개 보냈습니다. 직원이 답을 받아 일을 이어 갑니다.${DEMO ? " (시연)" : ""}` : "") +
+      (ok.length ? `보냈습니다. 직원이 답을 받아 일을 이어 갑니다.${left ? ` 다음 질문 ${left}개 남음.` : ""}${DEMO ? " (시연)" : ""}` : "") +
       (bad.length ? ` ${bad.length}개는 못 보냈습니다: ${bad.map((x) => `${x.id} – ${x.error}`).join(", ")}` : "");
     renderQbox();
     if (data) apply(data); // 줄에서 바로 빼기

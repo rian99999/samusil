@@ -127,10 +127,15 @@
     </div>
     <div class="q-form">
       <p id="qEmpty" class="ros-note">지금은 기다리는 질문이 없습니다.</p>
+      <div id="qStep" class="q-step" hidden>
+        <button id="qPrev" class="ghost" type="button" aria-label="이전 질문">‹ 이전</button>
+        <span id="qStepText" aria-live="polite"></span>
+        <button id="qNext" class="ghost" type="button" aria-label="다음 질문">다음 ›</button>
+      </div>
       <ul id="qList" class="q-list"></ul>
       <p id="qErr" class="err" role="alert"></p>
       <p id="qSendMsg" class="copy-msg" role="status" aria-live="polite"></p>
-      <button id="qSend" class="primary wide" type="button">답변 보내기</button>
+      <button id="qSend" class="primary wide" type="button">이 답 보내기</button>
       <button id="qMake" class="ghost wide" type="button">복사해서 대화에 붙여넣기</button>
     </div>
     <div class="q-result">
@@ -378,7 +383,7 @@
         <li>
           <h3>대표실 앞 질문 줄</h3>
           <p>나에게 묻는 질문은 대표실 문 앞에 줄을 섭니다. 오래 기다릴수록 힘들어해요.</p>
-          <p>질문에는 지금까지 만든 시안 그림과 진행 단계가 함께 나옵니다. 그림 위 <b>A·B</b> 표시가 고를 자리이고, 아래 같은 글자 버튼을 누르면 답이 바로 채워집니다.</p>
+          <p>질문에는 지금까지 만든 시안 그림과 진행 단계가 함께 나옵니다. 그림 위 <b>A·B</b> 표시가 고를 자리이고, 아래 같은 글자 버튼을 누르면 답이 바로 채워집니다. 고르는 질문에는 <b>안마다 예시 그림</b>이 붙고, 질문은 <b>한 번에 하나씩</b> 나옵니다(이전·다음으로 넘기기).</p>
           <p><b>답하는 법 두 가지:</b> ① Claude 대화에 질문 카드가 뜨면 거기서 고르거나 적습니다. ② 화면에서 줄 선 사람이나 아래 <b>답할 질문</b>을 누르고 답을 적은 뒤 <b>답변 보내기</b>를 누르면 직원에게 바로 전달됩니다. (보내기가 안 되는 화면에서는 <b>복사해서 대화에 붙여넣기</b>)</p>
           <p class="scale"><span>3분까지 <b>서서 대기</b></span><span>3분 넘음 <b>💧</b></span><span>10분 넘음 <b>쪼그려 앉아 💧💧</b></span></p>
         </li>

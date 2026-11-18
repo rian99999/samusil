@@ -41,6 +41,14 @@
         (state === "done" ? `<rect x="${x + 20}" y="50" width="110" height="14" fill="#c9bfd0"/><rect x="${x + 20}" y="74" width="80" height="10" fill="#d9d2de"/>` : "") +
         (state === "now" ? `<rect x="${x + 20}" y="50" width="110" height="18" fill="#3e6fd8"/><rect x="${x + 20}" y="80" width="110" height="60" fill="none" stroke="#9a949e" stroke-dasharray="4 4"/>` : "") + "</g>";
     };
+    // 안마다 예시 그림: 3번 카드를 그 안대로 그린 작은 목업
+    const optCard = (titleColor, chipColor) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" font-family="sans-serif"><rect width="400" height="500" fill="#F5F5F4"/>` +
+      `<text x="32" y="80" font-size="34" font-weight="700" fill="${titleColor}">3 고르는 법</text>` +
+      `<text x="32" y="122" font-size="18" fill="#6B6670">같은 계열 안에서 명도·채도로</text>` +
+      `<rect x="32" y="170" width="150" height="150" fill="${chipColor}"/><rect x="218" y="170" width="150" height="150" fill="#E6E4E7"/>` +
+      `<text x="107" y="350" font-size="16" text-anchor="middle" fill="#221F26">고객 색</text><text x="293" y="350" font-size="16" text-anchor="middle" fill="#221F26">비교 색</text>` +
+      `<text x="32" y="450" font-size="14" fill="#6B6670">RIAN</text></svg>`);
     const DEMO_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 250" font-family="sans-serif"><rect width="680" height="250" fill="#fafafa"/>` +
       card(10, "1 표지", "done") + card(180, "2 원인", "done") + card(350, "3 고르는 법", "now") + card(520, "4 예약 안내", "todo") + "</svg>");
@@ -51,8 +59,8 @@
         progress: { done: ["1 표지", "2 원인"], todo: ["3 고르는 법", "4 예약 안내"] },
         visual: { src: DEMO_SVG, title: "카드뉴스 시안 · 3번 카드 작업 중", pins: [{ key: "A", x: 63, y: 20 }, { key: "B", x: 63, y: 50 }] },
         options: [
-          { key: "A", label: "제목을 파랑으로", where: "3번 카드 맨 위 제목 줄" },
-          { key: "B", label: "제목은 검정, 비교 칩만 색", where: "3번 카드 가운데 칩 자리" },
+          { key: "A", label: "제목을 파랑으로", where: "3번 카드 맨 위 제목 줄", image: optCard("#3e6fd8", "#c9bfd0") },
+          { key: "B", label: "제목은 검정, 비교 칩만 색", where: "3번 카드 가운데 칩 자리", image: optCard("#221f26", "#3e6fd8") },
         ],
       },
     ];
