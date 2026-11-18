@@ -870,6 +870,7 @@
     return out.join("");
   }
   const apDlg = $("#approvals");
+  const postSpecs = new Map(); // "결재id:파일" → 게시본 내용 (손으로 올리기 복사용)
   let apCurrent = null;
   function renderApList() {
     const list = pendingApprovals(data);
@@ -918,6 +919,7 @@
     // 게시본(JSON)은 실제로 올라갈 글을 그대로 보여 준다
     const showPost = (txt) => {
       let j = null; try { j = JSON.parse(txt); } catch (_) {}
+      if (j) postSpecs.set(ap.id + ":" + p, j);
       if (!j) { body.append(el("pre", "ap-pre", txt)); return; }
       const box = el("div", "post-preview");
       if (j.ad) box.append(el("p", "ap-meta", "광고 글 (첫 줄 광고 표시 확인)"));
@@ -975,6 +977,7 @@
     files.textContent = "";
     parts.forEach((x) => files.append(x));
     if (!parts.length) files.append(el("p", null, "첨부된 자료가 없습니다."));
+    renderPublish();
   }
   function openApList() {
     if (!data) return;
@@ -1015,8 +1018,12 @@
     if (!apCurrent || $("#apPublish").hidden) return;
     const ap = ((data && data.approvals) || []).find((x) => String(x.id) === String(apCurrent.id)) || apCurrent;
     const can = (data && data.canPublish) || {};
-    const needPin = !DEMO && !pubPinSaved();
+    const anyAuto = DEMO || postChannels(ap).some((ch) => can[ch]);
+    const needPin = anyAuto && !DEMO && !pubPinSaved();
     $("#pubPin").hidden = $("#pubPinLabel").hidden = !needPin;
+    $("#pubIntro").textContent = anyAuto
+      ? "승인된 글입니다. '게시'를 직접 눌러야 올라갑니다. 올리기 직전에 광고 표시·해시태그 수·글자 수·브랜드 검사를 한 번 더 하고, 걸리면 올리지 않습니다. 올린 글은 여기서 지울 수 없습니다(앱에서 지움)."
+      : "승인된 글입니다. 자동 게시는 아직 연결 전이라, 글을 복사하고 그림을 저장해 앱에서 직접 올린 뒤 '올렸어요'를 눌러 주세요.";
     const list = $("#pubList");
     list.textContent = "";
     for (const ch of postChannels(ap)) {
@@ -1024,10 +1031,12 @@
       const li = el("li", "pub-row");
       const info = el("div", "pub-info");
       info.append(el("b", null, PUB_CH[ch]), el("span", "ap-meta", pubStatusWord(p) + (p && p.error ? ` — ${p.error}` : "")));
+      if (p && p.status === "done" && p.manual) info.append(el("span", "ap-meta", "손으로 올림"));
       if (p && p.url && /^https:\/\//.test(p.url)) {
         const a = el("a", null, "게시물 보기"); a.href = p.url; a.target = "_blank"; a.rel = "noopener noreferrer"; info.append(a);
       }
       li.append(info);
+      if (!(p && p.status === "done")) li.append(manualTools(ap, ch));
       const busy = p && (p.status === "publishing" || p.status === "done");
       // 검사에서 걸린 글은 다시 눌러도 또 걸린다 → 버튼 대신 수정 요청 안내
       const stuck = p && p.status === "failed" && (p.posted > 0 || /^검사 실패/.test(p.error || ""));
@@ -1035,12 +1044,65 @@
       if (!busy && !stuck) {
         const b = el("button", "primary", p && p.status === "failed" ? "다시 게시" : `${PUB_CH[ch]}에 게시`);
         b.type = "button";
-        if (!DEMO && !can[ch]) { b.disabled = true; info.append(el("span", "ap-meta", "연결 안 됨: office.secrets.json 과 serve.mjs --pin 이 필요합니다")); }
+        if (!DEMO && !can[ch]) { b.disabled = true; b.textContent = "자동 게시 (연결 전)"; }
         b.addEventListener("click", () => publish(ap.id, ch, b));
         li.append(b);
       }
       list.append(li);
     }
+  }
+  // 손으로 올리기: 자동 게시 연결 전에도 승인된 글·그림 그대로 휴대폰에서 올릴 수 있게
+  function copyText(text, msgEl) {
+    const done = () => { msgEl.textContent = "복사했습니다. 앱에서 붙여넣으세요."; };
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(done, () => fallback());
+    fallback();
+    function fallback() {
+      // http 주소(사무실 와이파이)에서는 클립보드 API 가 막혀 있어 예전 방식으로 복사
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.append(ta); ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false; try { ok = document.execCommand("copy"); } catch (_) {}
+      ta.remove();
+      msgEl.textContent = ok ? "복사했습니다. 앱에서 붙여넣으세요." : "자동 복사가 막혔습니다. 위 게시본 글을 길게 눌러 복사해 주세요.";
+    }
+  }
+  function manualTools(ap, ch) {
+    const box = el("div", "pub-manual");
+    const specPath = (ap.files || []).find((f) => String(f).split("/").pop() === `post-${ch}.json`);
+    const spec = postSpecs.get(ap.id + ":" + specPath);
+    if (!spec) { box.append(el("span", "ap-meta", "게시본을 여는 중…")); return box; }
+    const text = ch === "instagram" ? String(spec.caption || "") : (Array.isArray(spec.posts) ? spec.posts.join("\n\n") : "");
+    const imgs = ch === "instagram" ? (Array.isArray(spec.images) ? spec.images : []) : (spec.image ? [spec.image] : []);
+    const msg = el("span", "ap-meta");
+    const cp = el("button", "ghost", ch === "instagram" ? "캡션 복사" : "글 복사"); cp.type = "button";
+    cp.addEventListener("click", () => copyText(text, msg));
+    box.append(cp);
+    imgs.forEach((f, i) => {
+      const a = el("a", "ghost btn-link", imgs.length > 1 ? `그림 ${i + 1} 저장` : "그림 저장");
+      if (DEMO) { a.setAttribute("aria-disabled", "true"); a.title = "시연에서는 그림이 없습니다"; }
+      else { a.href = "api/file?download=1&path=" + encodeURIComponent(f); a.setAttribute("download", String(f).split("/").pop()); }
+      box.append(a);
+    });
+    const posted = el("button", "ghost", "올렸어요"); posted.type = "button";
+    posted.addEventListener("click", () => markManual(ap.id, ch, posted, msg));
+    box.append(posted, msg);
+    return box;
+  }
+  async function markManual(id, ch, btn, msg) {
+    const url = window.prompt(`${PUB_CH[ch]}에 올린 게시물 주소가 있으면 붙여넣어 주세요. (없으면 비워 두고 확인)`, "");
+    if (url === null) return;
+    const clean = url.trim();
+    if (clean && !/^https:\/\//.test(clean)) { msg.textContent = "주소는 https:// 로 시작해야 합니다."; return; }
+    btn.disabled = true;
+    try {
+      if (DEMO) DEMO.publish(id, ch);
+      else {
+        const r = await fetch("api/manual-posted", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, channel: ch, url: clean }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+      }
+      msg.textContent = "게시 완료로 기록했습니다.";
+    } catch (e) { msg.textContent = `기록하지 못했습니다: ${e.message}`; btn.disabled = false; }
   }
   async function publish(id, ch, btn) {
     if (!window.confirm(`${PUB_CH[ch]}에 지금 올릴까요?\n올린 글은 이 화면에서 지울 수 없습니다.`)) return;

@@ -60,7 +60,9 @@ function fileApi(url, res) {
   if (!/^(work|reports)\//.test(relNorm) || !type || !inside) { res.writeHead(404); return res.end("not found"); }
   fs.readFile(real, (err, buf) => {
     if (err) { res.writeHead(404); return res.end("not found"); }
-    res.writeHead(200, { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff" });
+    const head = { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff" };
+    if (url.searchParams.get("download")) head["content-disposition"] = `attachment; filename*=UTF-8''${encodeURIComponent(path.basename(real))}`;
+    res.writeHead(200, head);
     res.end(buf);
   });
 }
@@ -133,6 +135,17 @@ function publishApi(req, res) {
     send(202, { ok: true, started: true });
   });
 }
+// 손으로 올린 뒤 '올렸어요' → 게시 완료로 기록 (재촉 알림이 멈추고, 자동 게시가 같은 글을 또 올리지 않게)
+function manualPostedApi(req, res) {
+  const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  readJson(req, res, send, async (j) => {
+    const id = String(j.id || ""), ch = String(j.channel || ""), u = String(j.url || "").trim();
+    if (!/^a\d+$/.test(id) || !["instagram", "threads"].includes(ch)) return send(400, { error: "결재 번호나 채널이 잘못됐습니다" });
+    if (u && (!/^https:\/\/[^\s]+$/.test(u) || u.length > 500)) return send(400, { error: "주소가 올바르지 않습니다" });
+    const r = await runOffice(["record-publish", id, "--channel", ch, "--status", "done", "--manual", "yes", ...(u ? ["--url", u] : [])]);
+    send(r.ok ? 200 : 409, r.ok ? { ok: true } : { error: r.error });
+  });
+}
 function decideApi(req, res) {
   const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
   readJson(req, res, send, async (j) => {
@@ -182,6 +195,7 @@ http.createServer((req, res) => {
   if (url.pathname === "/api/decide") return decideApi(req, res);
   if (url.pathname === "/api/task") return taskApi(req, res);
   if (url.pathname === "/api/publish") return publishApi(req, res);
+  if (url.pathname === "/api/manual-posted") return manualPostedApi(req, res);
   if (url.pathname === "/api/file") return fileApi(url, res);
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
   if (!PUBLIC.has(rel)) { res.writeHead(404); return res.end("not found"); }

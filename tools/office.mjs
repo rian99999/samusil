@@ -263,7 +263,9 @@ switch (cmd) {
       const cur = a.published[ch];
       // 같은 글을 두 번 올리지 않게: 진행 중이거나 이미 올라간 것은 다시 시작하지 않는다
       if (st === "publishing" && cur && (cur.status === "publishing" || cur.status === "done")) die("이미 " + (cur.status === "done" ? "게시됨" : "게시 중") + ": " + id + " " + ch);
-      a.published[ch] = { status: st, at: nowIso(), ...(o.url ? { url: String(o.url) } : {}), ...(o.error ? { error: String(o.error).slice(0, 500) } : {}), ...(cur && cur.posted ? { posted: cur.posted } : {}), ...(o.posted ? { posted: Number(o.posted) } : {}) };
+      if (o.manual && cur && cur.status === "done") die("이미 게시 완료로 기록됨: " + id + " " + ch);
+      if (o.manual && cur && cur.status === "publishing") die("자동 게시가 진행 중입니다: " + id + " " + ch);
+      a.published[ch] = { status: st, at: nowIso(), ...(o.manual ? { manual: true } : {}), ...(o.url ? { url: String(o.url) } : {}), ...(o.error ? { error: String(o.error).slice(0, 500) } : {}), ...(cur && cur.posted ? { posted: cur.posted } : {}), ...(o.posted ? { posted: Number(o.posted) } : {}) };
     });
     console.log(`게시 기록: ${id} ${ch} ${st}`);
     break;
