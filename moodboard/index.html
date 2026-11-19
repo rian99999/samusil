@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RIAN 톤 무드보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tenor+Sans&family=Hahmlet:wght@300;400&family=IBM+Plex+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --raw:#F5F5F4; --rough:#E6E4E7; --white:#FFFFFF; --line:#D6D2D8;
+  --slate:#6B6670; --onyx:#221F26; --tour:#7E4560; --tint:#EFE4E9;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--raw);color:var(--onyx);
+  font:15px/1.7 "Pretendard","IBM Plex Sans KR",system-ui,sans-serif}
+header{padding:28px 16px 16px;max-width:1200px;margin:0 auto;border-bottom:1px solid var(--line)}
+.mark{font-family:"Tenor Sans",serif;letter-spacing:.34em;font-size:20px;margin:0}
+h1{font-family:Hahmlet,serif;font-weight:300;letter-spacing:-.02em;font-size:28px;margin:6px 0 4px}
+.sub{color:var(--slate);margin:0;font-size:14px}
+main{max-width:1200px;margin:0 auto;padding:16px}
+section{margin:0 0 28px}
+h2{font-family:Hahmlet,serif;font-weight:400;font-size:20px;letter-spacing:-.02em;margin:0 0 10px;
+  border-top:1px solid var(--onyx);padding-top:10px}
+.drop{border:1px dashed var(--slate);background:var(--white);padding:28px 16px;text-align:center;cursor:pointer}
+.drop.on{background:var(--tint)}
+.drop b{display:block;font-weight:500;font-size:16px}
+.drop span{color:var(--slate);font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+input[type=url]{flex:1 1 260px;min-width:0;padding:9px 10px;border:1px solid var(--line);background:var(--white);font:inherit;border-radius:0}
+button{font:inherit;padding:8px 14px;border:1px solid var(--onyx);background:var(--white);color:var(--onyx);cursor:pointer;border-radius:0}
+button.main{background:var(--tour);border-color:var(--tour);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+label.opt{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--onyx)}
+.note{font-size:13px;color:var(--slate);margin:8px 0 0}
+#status{font-size:14px;min-height:1.7em;margin-top:8px}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.item{background:var(--white);border:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:6px}
+.thumb{aspect-ratio:3/4;background:var(--rough);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.chips{display:flex;height:14px}
+.chips i{flex:1}
+.item select{font:inherit;font-size:13px;padding:4px;border:1px solid var(--line);background:var(--white);border-radius:0;width:100%}
+.why{font-size:12px;color:var(--slate);line-height:1.4}
+.item .x{align-self:flex-end;border:0;padding:0 2px;font-size:13px;color:var(--slate);background:none}
+.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.board{background:var(--white);border:1px solid var(--line);padding:8px}
+.board canvas{width:100%;height:auto;display:block;background:var(--raw)}
+.board .row{margin-top:8px;justify-content:space-between}
+.board .row span{font-size:14px}
+.empty{color:var(--slate);font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <p class="mark">RIAN</p>
+  <h1>톤 무드보드 만들기</h1>
+  <p class="sub">룩 사진을 넣으면 배경을 지우고, 옷 색으로 톤을 나눠 무드보드 그림을 만듭니다.</p>
+</header>
+<main>
+  <section>
+    <h2>1. 룩 사진 넣기</h2>
+    <div class="drop" id="drop" tabindex="0" role="button">
+      <b>여기로 사진을 끌어 놓거나 눌러서 고르세요</b>
+      <span>여러 장 한꺼번에 가능 · 복사한 그림은 Ctrl+V(휴대폰은 길게 눌러 붙여넣기)</span>
+    </div>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+    <div class="row">
+      <input type="url" id="url" placeholder="그림 주소 붙여넣기 (https://i.pinimg.com/… 처럼 그림 파일 주소)">
+      <button id="addUrl">주소로 넣기</button>
+    </div>
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="optCut" checked> 배경 지우기(누끼)</label>
+      <label class="opt"><input type="checkbox" id="optSkin" checked> 피부색 빼고 옷 색만 보기</label>
+    </div>
+    <p class="note">핀터레스트 보드 링크(pin.it)는 핀터레스트가 바깥에서 그림을 가져가지 못하게 막아 두어서 바로 읽을 수 없습니다. 핀을 열고 그림을 저장한 뒤 여기에 올려 주세요.
+      누끼는 이 기기 안에서 합니다(사진이 다른 곳으로 가지 않음). 처음 한 번은 누끼 프로그램(약 40MB)을 내려받느라 시간이 걸립니다.</p>
+    <div id="status" aria-live="polite"></div>
+  </section>
+
+  <section>
+    <h2>2. 톤 확인</h2>
+    <p class="note" style="margin:0 0 10px">자동 분류는 옷 색의 밝기·따뜻함·선명함으로 정한 추정입니다. 틀리면 아래에서 바꾸세요.</p>
+    <div class="items" id="items"><p class="empty">아직 넣은 사진이 없습니다.</p></div>
+  </section>
+
+  <section>
+    <h2>3. 톤별 무드보드</h2>
+    <div class="row" style="margin:0 0 12px">
+      <button class="main" id="saveAll" disabled>전부 저장</button>
+      <button id="clearAll" disabled>모두 지우기</button>
+    </div>
+    <div class="boards" id="boards"><p class="empty">사진을 넣으면 여기에 무드보드가 생깁니다.</p></div>
+  </section>
+</main>
+
+<script type="module">
+// ---------- 톤 정의 ----------
+const TONES = {
+  spring: {ko:'봄 웜톤', en:'SPRING WARM', desc:'밝고 맑은 따뜻한 색'},
+  summer: {ko:'여름 쿨톤', en:'SUMMER COOL', desc:'밝고 부드러운 차가운 색'},
+  autumn: {ko:'가을 웜톤', en:'AUTUMN WARM', desc:'깊고 차분한 따뜻한 색'},
+  winter: {ko:'겨울 쿨톤', en:'WINTER COOL', desc:'선명하고 대비가 큰 차가운 색'},
+  mono:   {ko:'모노톤', en:'MONOTONE', desc:'흰색·회색·검정 중심'},
+};
+const ORDER = ['spring','summer','autumn','winter','mono'];
+const PER_PAGE = 12;
+const BRAND = {raw:'#F5F5F4', rough:'#E6E4E7', line:'#D6D2D8', slate:'#6B6670', onyx:'#221F26', tour:'#7E4560'};
+
+// ---------- 색 계산 ----------
+function srgbToLab(r,g,b){
+  const f=c=>{c/=255;return c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4)};
+  const R=f(r),G=f(g),B=f(b);
+  let x=(R*0.4124+G*0.3576+B*0.1805)/0.95047, y=(R*0.2126+G*0.7152+B*0.0722), z=(R*0.0193+G*0.1192+B*0.9505)/1.08883;
+  const t=v=>v>0.008856?Math.cbrt(v):(7.787*v+16/116);
+  x=t(x);y=t(y);z=t(z);
+  return [116*y-16, 500*(x-y), 200*(y-z)];
+}
+const hex=(r,g,b)=>'#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+
+// 피부·머리카락 근처 색(대략): 따뜻한 중간 밝기, 채도 낮음~중간
+function looksLikeSkin(L,a,b){
+  const C=Math.hypot(a,b), h=(Math.atan2(b,a)*180/Math.PI+360)%360;
+  return L>55 && L<85 && C>12 && C<32 && h>40 && h<70;
+}
+
+function kmeans(pts, k, iters=10){
+  if(pts.length===0) return [];
+  k=Math.min(k,pts.length);
+  // k-means++ 비슷하게 시작점 고르기(결과가 매번 같도록 고정 간격)
+  const cents=[]; for(let i=0;i<k;i++) cents.push(pts[Math.floor((i+0.5)*pts.length/k)].slice(0,3));
+  const assign=new Int32Array(pts.length);
+  for(let it=0;it<iters;it++){
+    const sum=cents.map(()=>[0,0,0,0,0,0,0]);
+    for(let i=0;i<pts.length;i++){
+      const p=pts[i]; let best=0,bd=Infinity;
+      for(let c=0;c<k;c++){const d=(p[0]-cents[c][0])**2+(p[1]-cents[c][1])**2+(p[2]-cents[c][2])**2; if(d<bd){bd=d;best=c}}
+      assign[i]=best; const s=sum[best]; s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];s[3]+=p[3];s[4]+=p[4];s[5]+=p[5];s[6]++;
+    }
+    for(let c=0;c<k;c++){const s=sum[c]; if(s[6]) cents[c]=[s[0]/s[6],s[1]/s[6],s[2]/s[6],s[3]/s[6],s[4]/s[6],s[5]/s[6],s[6]];}
+  }
+  return cents.filter(c=>c[6]).map(c=>({lab:[c[0],c[1],c[2]], rgb:[c[3],c[4],c[5]], w:c[6]/pts.length}))
+    .sort((a,b)=>b.w-a.w);
+}
+
+// 그림에서 색 점 뽑기: 투명한 곳 제외, 누끼가 없으면 가운데 쪽만
+function samplePixels(canvas, hasAlpha, skipSkin){
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const {width:w,height:h}=canvas, d=ctx.getImageData(0,0,w,h).data;
+  const step=Math.max(1,Math.floor(Math.sqrt(w*h/15000)));
+  const pts=[], skin=[];
+  // 누끼가 없으면 테두리 색을 배경으로 보고 비슷한 색은 뺀다
+  let bg=null;
+  if(!hasAlpha){
+    const edge=[]; for(let x=0;x<w;x+=step){edge.push(x*4, ((h-1)*w+x)*4);} for(let y=0;y<h;y+=step){edge.push(y*w*4, (y*w+w-1)*4);}
+    const labs=edge.map(i=>srgbToLab(d[i],d[i+1],d[i+2]));
+    bg=[0,1,2].map(k=>{const v=labs.map(l=>l[k]).sort((a,b)=>a-b); return v[v.length>>1];});
+  }
+  for(let y=0;y<h;y+=step) for(let x=0;x<w;x+=step){
+    if(!hasAlpha){ const dx=(x/w-0.5)/0.36, dy=(y/h-0.5)/0.46; if(dx*dx+dy*dy>1) continue; }
+    const i=(y*w+x)*4; if(d[i+3]<200) continue;
+    const r=d[i],g=d[i+1],b=d[i+2], lab=srgbToLab(r,g,b), p=[...lab,r,g,b];
+    if(bg && (lab[0]-bg[0])**2+(lab[1]-bg[1])**2+(lab[2]-bg[2])**2 < 144) continue;
+    (skipSkin&&looksLikeSkin(...lab)?skin:pts).push(p);
+  }
+  // 옷 색이 거의 없으면(예: 베이지 옷) 피부 빼기를 포기
+  return pts.length>=Math.max(60,(pts.length+skin.length)*0.15)?pts:pts.concat(skin);
+}
+
+function classify(palette){
+  let wL=0,sw=0,chromaW=0,cSum=0,warm=0;
+  for(const c of palette){
+    const [L,a,b]=c.lab, C=Math.hypot(a,b), h=Math.atan2(b,a);
+    wL+=L*c.w; sw+=c.w;
+    if(C>=10){ chromaW+=c.w; cSum+=C*c.w; warm+=Math.cos(h-55*Math.PI/180)*Math.min(1,C/30)*c.w; }
+  }
+  const L=wL/(sw||1);
+  if(chromaW<0.25) return {tone:'mono', why:`색이 거의 없음 · 밝기 ${Math.round(L)}`};
+  const C=cSum/chromaW, W=warm/chromaW;
+  const isWarm=W>0, light=L>=58, clear=C>=42;
+  let tone;
+  if(isWarm) tone = (light || (clear && L>=50)) ? 'spring' : 'autumn';
+  else tone = (light && !clear) ? 'summer' : ((L<50 || clear) ? 'winter' : 'summer');
+  const why=`${isWarm?'따뜻함':'차가움'} · ${L>=58?'밝음':L>=45?'중간 밝기':'어두움'} · ${clear?'선명함':'부드러움'}`;
+  return {tone, why};
+}
+
+// ---------- 누끼 ----------
+let bgLib=null, bgFailed=false;
+async function cutout(blob){
+  if(bgFailed) throw new Error('누끼 프로그램을 불러오지 못함');
+  if(!bgLib){
+    status('누끼 프로그램 내려받는 중… (처음 한 번만)');
+    try{ bgLib=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm'); }
+    catch(e){ bgFailed=true; throw e; }
+  }
+  return bgLib.removeBackground(blob,{model:'isnet_fp16',output:{format:'image/png'},
+    progress:(key,cur,tot)=>{ if(key.startsWith('fetch')&&tot) status(`누끼 프로그램 내려받는 중… ${Math.round(cur/tot*100)}%`); }});
+}
+
+function loadImg(src){return new Promise((ok,no)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>ok(i);i.onerror=()=>no(new Error('그림을 열 수 없음'));i.src=src;});}
+
+// 투명한 테두리 잘라 내기 + 긴 변 900px로 줄이기
+function toCanvas(img, trim){
+  const max=900, s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+  let c=document.createElement('canvas'); c.width=Math.round(img.naturalWidth*s); c.height=Math.round(img.naturalHeight*s);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  if(!trim) return c;
+  const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+  let x0=c.width,y0=c.height,x1=-1,y1=-1;
+  for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++) if(d[(y*c.width+x)*4+3]>20){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  if(x1<0) return c;
+  const t=document.createElement('canvas'); t.width=x1-x0+1; t.height=y1-y0+1;
+  t.getContext('2d').drawImage(c,x0,y0,t.width,t.height,0,0,t.width,t.height);
+  return t;
+}
+
+// ---------- 상태 ----------
+const items=[]; let nextId=1, queue=Promise.resolve();
+const $=id=>document.getElementById(id);
+const status=t=>{$('status').textContent=t};
+
+function addBlob(blob, name){
+  const it={id:nextId++, name, state:'wait'}; items.push(it); renderItems();
+  queue=queue.then(()=>processItem(it, blob));
+}
+
+async function processItem(it, blob){
+  it.state='work'; status(`처리 중: ${it.name}`); renderItems();
+  let canvas, cut=false;
+  if($('optCut').checked){
+    try{
+      const out=await cutout(blob); const url=URL.createObjectURL(out);
+      canvas=toCanvas(await loadImg(url),true); URL.revokeObjectURL(url); cut=true;
+    }catch(e){ it.note='누끼 실패 → 원본 사용'; console.warn(e); }
+  }
+  if(!canvas){ const url=URL.createObjectURL(blob); canvas=toCanvas(await loadImg(url),false); URL.revokeObjectURL(url); }
+  const pts=samplePixels(canvas, cut, $('optSkin').checked);
+  it.palette=kmeans(pts,5);
+  Object.assign(it, classify(it.palette));
+  it.canvas=canvas; it.cut=cut; it.state='done';
+  const left=items.filter(x=>x.state!=='done').length;
+  status(left?`남은 사진 ${left}장`:(bgFailed&&$('optCut').checked?'끝. 누끼 프로그램을 불러오지 못해 원본 사진으로 만들었습니다(인터넷 연결 확인).':'끝.'));
+  renderItems(); renderBoards();
+}
+
+// ---------- 화면: 사진 목록 ----------
+function renderItems(){
+  const box=$('items'); box.innerHTML='';
+  if(!items.length){box.innerHTML='<p class="empty">아직 넣은 사진이 없습니다.</p>';return;}
+  for(const it of items){
+    const el=document.createElement('div'); el.className='item';
+    const th=document.createElement('div'); th.className='thumb';
+    if(it.canvas){const im=new Image(); im.src=it.canvas.toDataURL('image/png'); im.alt=it.name; th.append(im);}
+    else th.textContent=it.state==='work'?'처리 중…':'기다리는 중';
+    el.append(th);
+    if(it.palette){
+      const ch=document.createElement('div'); ch.className='chips';
+      for(const c of it.palette){const i=document.createElement('i'); i.style.background=hex(...c.rgb); i.style.flexGrow=c.w; i.title=hex(...c.rgb); ch.append(i);}
+      const sel=document.createElement('select'); sel.setAttribute('aria-label','톤 고르기');
+      for(const k of ORDER){const o=new Option(TONES[k].ko,k,false,k===it.tone); sel.append(o);}
+      sel.onchange=()=>{it.tone=sel.value; it.why='직접 고름'; renderItems(); renderBoards();};
+      const why=document.createElement('div'); why.className='why'; why.textContent=it.why+(it.note?` · ${it.note}`:'');
+      el.append(ch,sel,why);
+    }
+    const x=document.createElement('button'); x.className='x'; x.textContent='빼기'; x.disabled=it.state!=='done';
+    x.onclick=()=>{items.splice(items.indexOf(it),1); renderItems(); renderBoards();};
+    el.append(x); box.append(el);
+  }
+}
+
+// ---------- 무드보드 그리기 (1080×1350) ----------
+function boardPalette(list){
+  const pts=[];
+  for(const it of list) for(const c of it.palette){ const n=Math.max(1,Math.round(c.w*100)); for(let i=0;i<n;i++) pts.push([...c.lab,...c.rgb]); }
+  const kept=[];
+  for(const c of kmeans(pts,6)){
+    if(c.w<=0.02) continue;
+    const same=kept.find(k=>(k.lab[0]-c.lab[0])**2+(k.lab[1]-c.lab[1])**2+(k.lab[2]-c.lab[2])**2<100);
+    if(same) same.w+=c.w; else kept.push(c);
+  }
+  return kept.sort((a,b)=>b.lab[0]-a.lab[0]);
+}
+
+function grid(n){ if(n<=1)return[1,1]; if(n<=2)return[2,1]; if(n<=4)return[2,2]; if(n<=6)return[3,2]; if(n<=9)return[3,3]; return[4,3]; }
+
+function drawBoard(tone, list, page, pages){
+  const W=1080,H=1350,P=72, c=document.createElement('canvas'); c.width=W;c.height=H;
+  const g=c.getContext('2d');
+  g.fillStyle=BRAND.raw; g.fillRect(0,0,W,H);
+  // 머리
+  g.fillStyle=BRAND.onyx; g.textBaseline='alphabetic';
+  g.font='28px "Tenor Sans"'; if('letterSpacing' in g) g.letterSpacing='9px';
+  g.fillText('RIAN',P,P+28);
+  g.font='22px "Tenor Sans"'; if('letterSpacing' in g) g.letterSpacing='6px';
+  g.fillStyle=BRAND.slate; const en=TONES[tone].en+(pages>1?`  ${page}/${pages}`:'');
+  g.fillText(en, W-P-g.measureText(en).width, P+26);
+  if('letterSpacing' in g) g.letterSpacing='-1px';
+  g.fillStyle=BRAND.onyx; g.font='300 64px Hahmlet'; g.fillText(TONES[tone].ko,P,P+130);
+  if('letterSpacing' in g) g.letterSpacing='0px';
+  g.fillStyle=BRAND.slate; g.font='26px "IBM Plex Sans KR"'; g.fillText(`${TONES[tone].desc} · 룩 ${list.length}개`,P,P+180);
+  g.fillStyle=BRAND.tour; g.fillRect(P,P+205,48,3);   // 포인트 한 곳
+  // 사진 칸
+  const top=P+240, bottom=H-P-150, [cols,rows]=grid(list.length), gap=16;
+  const cw=(W-2*P-gap*(cols-1))/cols, chh=(bottom-top-gap*(rows-1))/rows;
+  list.forEach((it,i)=>{
+    const cx=P+(i%cols)*(cw+gap), cy=top+Math.floor(i/cols)*(chh+gap);
+    if(!it.cut){ g.fillStyle='#FFFFFF'; g.fillRect(cx,cy,cw,chh); }
+    const im=it.canvas, s=Math.min(cw/im.width, chh/im.height)*(it.cut?0.96:1);
+    const w=im.width*s, h=im.height*s;
+    g.save(); g.beginPath(); g.rect(cx,cy,cw,chh); g.clip();
+    g.drawImage(im, cx+(cw-w)/2, cy+(chh-h)/2, w, h); g.restore();
+  });
+  // 팔레트
+  const pal=boardPalette(list), py=H-P-110, sw=(W-2*P)/Math.max(pal.length,1);
+  g.strokeStyle=BRAND.onyx; g.lineWidth=1; g.beginPath(); g.moveTo(P,py-24); g.lineTo(W-P,py-24); g.stroke();
+  pal.forEach((p,i)=>{
+    g.fillStyle=hex(...p.rgb); g.fillRect(P+i*sw, py, sw-8, 64);
+    g.fillStyle=BRAND.slate; g.font='20px "IBM Plex Sans KR"'; g.fillText(hex(...p.rgb), P+i*sw, py+98);
+  });
+  return c;
+}
+
+let boardCanvases=[];
+function renderBoards(){
+  const box=$('boards'); box.innerHTML=''; boardCanvases=[];
+  const done=items.filter(x=>x.state==='done');
+  $('saveAll').disabled=!done.length; $('clearAll').disabled=!items.length||items.some(x=>x.state!=='done');
+  if(!done.length){box.innerHTML='<p class="empty">사진을 넣으면 여기에 무드보드가 생깁니다.</p>';return;}
+  for(const tone of ORDER){
+    const list=done.filter(x=>x.tone===tone); if(!list.length) continue;
+    const pages=Math.ceil(list.length/PER_PAGE);
+    for(let p=0;p<pages;p++){
+      const cv=drawBoard(tone, list.slice(p*PER_PAGE,(p+1)*PER_PAGE), p+1, pages);
+      const file=`RIAN-${tone}${pages>1?'-'+(p+1):''}.png`; boardCanvases.push({cv,file});
+      const el=document.createElement('div'); el.className='board'; el.append(cv);
+      const row=document.createElement('div'); row.className='row';
+      const lab=document.createElement('span'); lab.textContent=`${TONES[tone].ko}${pages>1?` ${p+1}/${pages}`:''}`;
+      const b=document.createElement('button'); b.textContent='그림 저장'; b.onclick=()=>save(cv,file);
+      row.append(lab,b); el.append(row); box.append(el);
+    }
+  }
+}
+
+function save(cv,file){ cv.toBlob(b=>{const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=file; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png'); }
+
+// ---------- 입력 ----------
+function takeFiles(files){ for(const f of files) if(f.type.startsWith('image/')) addBlob(f, f.name); }
+const drop=$('drop');
+drop.onclick=()=>$('file').click();
+drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click();}};
+$('file').onchange=e=>{takeFiles(e.target.files); e.target.value='';};
+drop.ondragover=e=>{e.preventDefault(); drop.classList.add('on');};
+drop.ondragleave=()=>drop.classList.remove('on');
+drop.ondrop=e=>{e.preventDefault(); drop.classList.remove('on'); takeFiles(e.dataTransfer.files);};
+document.addEventListener('paste',e=>{ const fs=[...(e.clipboardData?.files||[])]; if(fs.length){e.preventDefault(); takeFiles(fs);} });
+$('addUrl').onclick=async()=>{
+  const u=$('url').value.trim(); if(!u) return;
+  if(/pin\.it|pinterest\.[a-z.]+\/(pin|board|[^/]+\/[^/]+\/?$)/i.test(u)&&!/i\.pinimg\.com/.test(u)){
+    status('핀터레스트 페이지 주소는 읽을 수 없습니다. 핀을 열어 그림을 길게 눌러 "이미지 주소 복사"한 주소(i.pinimg.com)를 넣거나, 그림을 저장해 올려 주세요.'); return; }
+  try{ const r=await fetch(u,{mode:'cors'}); if(!r.ok) throw new Error(r.status); const b=await r.blob();
+    if(!b.type.startsWith('image/')) throw new Error('그림 아님'); addBlob(b, u.split('/').pop().slice(0,40)||'그림'); $('url').value=''; }
+  catch(e){ status('이 주소의 그림은 가져올 수 없습니다(사이트가 막았거나 그림 주소가 아님). 그림을 저장해서 올려 주세요.'); }
+};
+$('saveAll').onclick=()=>boardCanvases.forEach((b,i)=>setTimeout(()=>save(b.cv,b.file),i*400));
+$('clearAll').onclick=()=>{ if(confirm('넣은 사진과 무드보드를 모두 지울까요?')){items.length=0; renderItems(); renderBoards(); status('');} };
+
+// 글꼴이 다 받아진 뒤 무드보드를 다시 그림(그림 속 글자 서체가 맞도록)
+document.fonts?.ready.then(()=>renderBoards());
+window.__moodboard={items, classify, kmeans, srgbToLab};
+</script>
+</body>
+</html>
