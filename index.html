@@ -42,6 +42,22 @@
     </div>
   </header>
 
+  <!-- 사장님이 확인할 일: 결재 · 질문 · 보낸 업무 -->
+  <section class="todo" aria-label="확인할 일">
+    <button id="apPill" class="todo-card is-empty" type="button" aria-haspopup="dialog">
+      <span class="todo-k">결재·게시</span><b id="apCount" class="todo-n">0</b>
+      <span id="apLabel" class="todo-s">확인할 자료 없음</span>
+    </button>
+    <button id="askPill" class="todo-card is-empty" type="button" aria-haspopup="dialog">
+      <span class="todo-k">답할 질문</span><b id="askCount" class="todo-n">0</b>
+      <span id="askSub" class="todo-s">기다리는 질문 없음</span>
+    </button>
+    <button id="taskPill" class="todo-card is-empty" type="button" aria-haspopup="dialog">
+      <span class="todo-k">보낸 업무</span><b id="taskCount" class="todo-n">0</b>
+      <span id="taskSub" class="todo-s">아직 보낸 업무 없음</span>
+    </button>
+  </section>
+
   <main class="building">
     <nav class="panel" aria-label="층 이동">
       <div class="display" aria-hidden="true">
@@ -65,13 +81,6 @@
     <span><i class="mini" style="--c:2;--r:2;background-image:url(assets/chars/c5.png)"></i>❓ 질문 줄</span>
   </footer>
 
-  <!-- 답할 질문이 있을 때만 보이는 버튼 -->
-  <button id="apPill" class="ask-pill ap-pill" type="button" aria-haspopup="dialog" hidden>
-    <span id="apLabel">결재 대기</span> <b id="apCount">0</b>
-  </button>
-  <button id="askPill" class="ask-pill" type="button" aria-haspopup="dialog" hidden>
-    답할 질문 <b id="askCount">0</b>
-  </button>
 
   <!-- 결재함 -->
   <dialog id="approvals" class="sheet approvals" aria-labelledby="apHead">
@@ -112,6 +121,24 @@
         <ul id="pubList" class="pub-list"></ul>
         <p id="pubMsg" class="copy-msg" role="status" aria-live="polite"></p>
       </div>
+    </div>
+  </dialog>
+
+  <!-- 보낸 업무 -->
+  <dialog id="tasksDlg" class="sheet tasks-dlg" aria-labelledby="tasksTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">보낸 업무</p>
+        <h2 id="tasksTitle">지시한 일이 어디까지 왔나</h2>
+      </div>
+      <button id="tasksClose" class="icon-btn" type="button" aria-label="닫기">✕</button>
+    </div>
+    <p id="tasksEmpty" class="ros-note">아직 화면에서 보낸 업무가 없습니다. <b>업무 맡기기</b>로 첫 일을 보내 보세요.</p>
+    <ol id="tasksList" class="tasks-list"></ol>
+    <p id="tasksWarn" class="ros-note tasks-warn" hidden>받는 Claude 가 없어 기다리는 업무가 있습니다. 이 컴퓨터에서 Claude Code 대화를 열고 <code>/office-watch</code> 를 실행해 두세요.</p>
+    <div class="row ros-actions">
+      <button class="primary" type="button" data-open-task>새 업무 맡기기</button>
     </div>
   </dialog>
 
@@ -236,6 +263,10 @@
     </div>
 
     <form id="taskForm" class="task-form" novalidate>
+      <div class="presets">
+        <p class="presets-k">자주 시키는 일 <span class="ap-opt">(누르면 칸이 채워집니다)</span></p>
+        <div id="presetList" class="preset-list"></div>
+      </div>
       <fieldset class="kind-seg">
         <legend>어떤 일인가요?</legend>
         <label class="check"><input type="radio" name="kind" value="general" checked> 일반 업무</label>
@@ -243,22 +274,26 @@
       </fieldset>
 
       <div class="kind-part" data-kind="general">
+        <label for="gWork">무엇을 할까요? <b class="req">필수</b></label>
+        <textarea id="gWork" rows="3" placeholder="예: 다음 달 예약 안내 문자 문구 3가지 써 줘 / 경쟁사 3곳 가격표 비교해 줘 / 직원 교육용 진단 순서 정리해 줘"></textarea>
+        <p id="gWorkErr" class="err" hidden>무엇을 할지 적어 주세요.</p>
+
         <fieldset class="assign">
-          <legend>누구에게 맡길까요?</legend>
+          <legend>누구에게 맡길까요? <span class="ap-opt">(기본: 본부장이 알아서 나눔)</span></legend>
           <div class="assign-tabs" role="radiogroup" aria-label="맡기는 방법">
-            <label class="check"><input type="radio" name="amode" value="auto" checked> 본부장이 알아서</label>
-            <label class="check"><input type="radio" name="amode" value="part"> 팀으로 고르기</label>
-            <label class="check"><input type="radio" name="amode" value="channel"> 채널·사이트로 고르기</label>
+            <label class="check"><input type="radio" name="amode" value="auto" checked> 알아서</label>
+            <label class="check"><input type="radio" name="amode" value="part"> 팀 고르기</label>
+            <label class="check"><input type="radio" name="amode" value="channel"> 채널·사이트</label>
           </div>
           <p id="assignHelp" class="hint assign-help"></p>
           <div id="assignList" class="assign-list"></div>
           <p id="assignErr" class="err" hidden>맡길 곳을 하나 이상 골라 주세요.</p>
         </fieldset>
 
-        <label for="gWork">무엇을 할까요? <b class="req">필수</b></label>
-        <textarea id="gWork" rows="3" placeholder="예: 다음 달 예약 안내 문자 문구 3가지 써 줘 / 경쟁사 3곳 가격표 비교해 줘 / 직원 교육용 진단 순서 정리해 줘"></textarea>
-        <p id="gWorkErr" class="err" hidden>무엇을 할지 적어 주세요.</p>
 
+        <details class="more" id="gMore">
+        <summary>더 자세히 적기 <span class="ap-opt">(선택 · 결과 모양, 기한, 참고 자료, 금지)</span></summary>
+        <div class="more-body">
         <label for="gResult">결과물은 어떤 모양으로?</label>
         <input id="gResult" placeholder="예: 표 하나, 한 장짜리 문서, 복사해 쓸 문구 3개" autocomplete="off">
 
@@ -271,6 +306,8 @@
 
         <label for="gBan">하면 안 되는 것</label>
         <input id="gBan" placeholder="예: 고객 이름·연락처 쓰지 않기, 밖으로 보내거나 올리지 않기" autocomplete="off">
+        </div>
+        </details>
       </div>
 
       <div class="kind-part" data-kind="sns" hidden>
@@ -278,6 +315,18 @@
       <input id="tTopic" name="topic" required placeholder="예: 가을 립 톤, 진단 결과로 고르기" autocomplete="off">
       <p id="topicErr" class="err" hidden>무엇을 알릴지 적어 주세요.</p>
 
+      <fieldset>
+        <legend>어느 팀이 할까요?</legend>
+        <label class="check"><input type="checkbox" name="ch" value="네이버 블로그" checked> 네이버 블로그</label>
+        <label class="check"><input type="checkbox" name="ch" value="인스타그램" checked> 인스타그램</label>
+        <label class="check"><input type="checkbox" name="ch" value="스레드" checked> 스레드</label>
+        <label class="check"><input type="checkbox" name="ch" value="디자인" checked> 디자인</label>
+        <p id="chErr" class="err" hidden>팀을 하나 이상 골라 주세요.</p>
+      </fieldset>
+
+      <details class="more" id="tMore">
+      <summary>더 자세히 적기 <span class="ap-opt">(선택 · 대상, 꼭 전할 말, 사실, 금지)</span></summary>
+      <div class="more-body">
       <label for="tTarget">누구에게?</label>
       <input id="tTarget" name="target" placeholder="예: 나에게 어울리는 립 색을 찾고 싶은 분" autocomplete="off">
 
@@ -290,19 +339,12 @@
 
       <label for="tBan">쓰면 안 되는 것</label>
       <input id="tBan" name="ban" placeholder="예: 다른 가게 이름, '최고'·'100%' 같은 과장" autocomplete="off">
-
-      <fieldset>
-        <legend>어느 팀이 할까요?</legend>
-        <label class="check"><input type="checkbox" name="ch" value="네이버 블로그" checked> 네이버 블로그</label>
-        <label class="check"><input type="checkbox" name="ch" value="인스타그램" checked> 인스타그램</label>
-        <label class="check"><input type="checkbox" name="ch" value="스레드" checked> 스레드</label>
-        <label class="check"><input type="checkbox" name="ch" value="디자인" checked> 디자인</label>
-        <p id="chErr" class="err" hidden>팀을 하나 이상 골라 주세요.</p>
-      </fieldset>
+      </div>
+      </details>
       </div>
 
       <p class="hint site-hint">연결해 둔 사이트는 지시서에 자동으로 들어갑니다. <button type="button" class="linkish" data-open-sites>사이트 연결 관리</button></p>
-      <button class="primary wide" type="submit">지시서 만들기</button>
+      <button id="taskSubmit" class="primary wide" type="submit">지시서 만들기</button>
       <button id="taskClear" class="ghost wide" type="button">새 업무로 비우기</button>
     </form>
 
@@ -379,12 +421,12 @@
           <h3>대표실 앞 질문 줄</h3>
           <p>나에게 묻는 질문은 대표실 문 앞에 줄을 섭니다. 오래 기다릴수록 힘들어해요.</p>
           <p>질문에는 지금까지 만든 시안 그림과 진행 단계가 함께 나옵니다. 그림 위 <b>A·B</b> 표시가 고를 자리이고, 아래 같은 글자 버튼을 누르면 답이 바로 채워집니다.</p>
-          <p><b>답하는 법 두 가지:</b> ① Claude 대화에 질문 카드가 뜨면 거기서 고르거나 적습니다. ② 화면에서 줄 선 사람이나 아래 <b>답할 질문</b>을 누르고 답을 적은 뒤 <b>답변 보내기</b>를 누르면 직원에게 바로 전달됩니다. (보내기가 안 되는 화면에서는 <b>복사해서 대화에 붙여넣기</b>)</p>
+          <p><b>답하는 법 두 가지:</b> ① Claude 대화에 질문 카드가 뜨면 거기서 고르거나 적습니다. ② 화면에서 줄 선 사람이나 위쪽 <b>답할 질문</b> 칸을 누르고 답을 적은 뒤 <b>답변 보내기</b>를 누르면 직원에게 바로 전달됩니다. (보내기가 안 되는 화면에서는 <b>복사해서 대화에 붙여넣기</b>)</p>
           <p class="scale"><span>3분까지 <b>서서 대기</b></span><span>3분 넘음 <b>💧</b></span><span>10분 넘음 <b>쪼그려 앉아 💧💧</b></span></p>
         </li>
         <li>
           <h3>시안·자료 결재</h3>
-          <p>직원이 확인받을 자료를 올리면 대표실 앞에 📋를 든 직원이 서고, 아래에 <b>결재 대기</b> 버튼이 뜹니다. 누르면 원고와 시안을 그 자리에서 읽고 <b>승인</b> 또는 <b>수정 요청</b>(의견 적기)을 누르면 직원에게 바로 전달됩니다.</p>
+          <p>직원이 확인받을 자료를 올리면 대표실 앞에 📋를 든 직원이 서고, 위쪽 <b>결재·게시</b> 칸에 숫자가 뜹니다. 누르면 원고와 시안을 그 자리에서 읽고 <b>승인</b> 또는 <b>수정 요청</b>(의견 적기)을 누르면 직원에게 바로 전달됩니다.</p>
         </li>
         <li>
           <h3>"확인 중"이 뜨면</h3>
@@ -396,14 +438,8 @@
         </li>
         <li>
           <h3>휴대폰으로 일 시키기</h3>
-          <p>아래 <b>업무 맡기기</b>를 누르고 <b>일반 업무</b>나 <b>SNS 홍보 글</b>을 고른 뒤 빈칸을 채우고 <b>지시서 만들기 → Claude에 바로 보내기</b>. 기다리고 있는 Claude 대화(<code>/office-watch</code> 를 켜 둔 대화)가 바로 받아 직원들에게 일을 나눠 줍니다. 처음 한 번은 사무실 비밀번호를 넣습니다. 바로 보내기가 안 되는 화면에서는 <b>복사하기</b> 후 Claude 대화에 붙여넣습니다.</p>
+          <p><b>업무 맡기기</b>를 누르고 <b>자주 시키는 일</b>을 고르거나 할 일을 한 줄 적은 뒤 <b>Claude에 보내기</b>. 보낸 일은 위쪽 <b>보낸 업무</b> 칸에서 "보냄 → 진행 중 → 끝남"으로 보입니다. 기다리고 있는 Claude 대화(<code>/office-watch</code> 를 켜 둔 대화)가 바로 받아 직원들에게 일을 나눠 줍니다. 처음 한 번은 사무실 비밀번호를 넣습니다. 바로 보내기가 안 되는 화면에서는 <b>복사하기</b> 후 Claude 대화에 붙여넣습니다.</p>
           <p>휴대폰에서는 위쪽 층 이름을 눌러 층을 옮기고, 사무실 그림은 <b>좌우로 밀어서</b> 봅니다.</p>
-        </li>
-        <li>
-          <h3>실제 자료 연결 (관리자용)</h3>
-          <p>질문에 진행 중인 시안을 붙이려면 질문에 <code>visual</code>(그림 주소와 A·B 자리), <code>options</code>(고를 안), <code>progress</code>(끝난 단계·남은 단계)를 넣습니다. 질문함에서 그림 위 핀과 같은 글자의 버튼을 누르면 답이 채워집니다.</p>
-          <p>화면은 <code>status.json</code>을 1초마다 읽습니다. 다른 주소는 <code>?src=주소</code>로 바꿉니다. 형식은 <code>README.md</code>에 있습니다.</p>
-          <p>기준값도 주소로 바꿀 수 있습니다: <code>?long=40&amp;doze=10&amp;stale=5000</code></p>
         </li>
       </ol>
     </div>

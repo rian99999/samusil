@@ -28,6 +28,14 @@ const PUBLIC = new Set(["index.html", "app.js", "style.css", "sim.js", "assets/o
   "manifest.webmanifest", "assets/icons/icon-192.png", "assets/icons/icon-512.png",
   "assets/icons/icon-maskable-512.png", "assets/icons/apple-touch-icon.png"]);
 
+// 업무 지시서에서 한 줄 요약 (화면의 '보낸 업무' 목록용): '할 일:' 또는 '주제:' 줄, 없으면 첫 줄
+function taskSummary(text) {
+  const lines = String(text || "").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("/office-run") && !/^\[업무 지시서/.test(l));
+  const hit = lines.find((l) => /^(할 일|주제):/.test(l)) || lines[0] || "";
+  const one = hit.replace(/^(할 일|주제):\s*/, "");
+  return one.length > 60 ? one.slice(0, 59) + "…" : one;
+}
+
 function status() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "office.config.json"), "utf8"));
   let s = { dayEnded: false, sessions: [], questions: [] };
@@ -36,7 +44,7 @@ function status() {
   try { setup = publicSetup(); } catch {}
   return { updatedAt: new Date().toISOString(), dayEnded: !!s.dayEnded, floors: cfg.floors, canAnswer: true, canApprove: true, canSendTask: !!PIN,
     canPublish: { instagram: !!PIN && setup.instagram, threads: !!PIN && setup.threads }, notifyOn: setup.notify,
-    tasks: (s.tasks || []).slice(-10).map((t) => ({ id: t.id, status: t.status, createdAt: t.createdAt, takenAt: t.takenAt, doneAt: t.doneAt, note: t.note })), approvals: s.approvals || [], roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
+    tasks: (s.tasks || []).slice(-10).map((t) => ({ id: t.id, status: t.status, summary: taskSummary(t.text), createdAt: t.createdAt, takenAt: t.takenAt, doneAt: t.doneAt, note: t.note })), approvals: s.approvals || [], roles: cfg.roles || {}, sites: cfg.sites || [], sessions: s.sessions || [], questions: s.questions || [] };
 }
 
 // 화면의 질문함에서 '보내기' → office.mjs reply 로 기록 (잠금·검사는 office.mjs 가 한다)

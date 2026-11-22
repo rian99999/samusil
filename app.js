@@ -444,6 +444,7 @@
     firstSnapshot = false;
     updateAskPill(questions);
     updateApPill(pendingApprovals(d));
+    updateTaskPill(d);
     if (apCurrent && apDlg.open && apDlg.classList.contains("detail")) renderPublish();
 
     // 하루 끝 → 방마다 차례로 불 끄기
@@ -671,9 +672,11 @@
   }
 
   function updateAskPill(qs) {
-    const pill = $("#askPill");
-    pill.hidden = !qs.length;
+    $("#askPill").classList.toggle("is-empty", !qs.length);
     $("#askCount").textContent = qs.length;
+    const oldest = qs.reduce((m, q) => Math.min(m, ms(q.askedAt) ?? Infinity), Infinity);
+    $("#askSub").textContent = !qs.length ? "기다리는 질문 없음"
+      : isFinite(oldest) ? `가장 오래 ${fmtMin(Math.max(0, (Date.now() - oldest) / 60000))} 기다림` : "답을 기다리는 중";
   }
   function renderQbox(focusId) {
     const list = $("#qList");
@@ -818,9 +821,10 @@
   function updateApPill(list) {
     const pub = publishReady(data);
     const n = list.length + pub.length;
-    $("#apPill").hidden = !n;
+    $("#apPill").classList.toggle("is-empty", !n);
     $("#apCount").textContent = n;
-    $("#apLabel").textContent = list.length ? (pub.length ? "결재·게시 대기" : "결재 대기") : "게시 대기";
+    $("#apLabel").textContent = !n ? "확인할 자료 없음"
+      : [list.length ? `결재 ${list.length}건` : "", pub.length ? `게시 ${pub.length}건` : ""].filter(Boolean).join(" · ") + " 기다림";
   }
   // 아주 작은 마크다운 → HTML (먼저 모두 이스케이프하고, 정해진 모양만 되살린다)
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1364,6 +1368,36 @@
     }
     return { lines, roles };
   }
+  // 자주 시키는 일: 누르면 종류·칸이 채워지고, 남은 필수 칸으로 간다
+  const PRESETS = [
+    { label: "이번 주 SNS 글", kind: "sns", ch: ["네이버 블로그", "인스타그램", "스레드", "디자인"], focus: "tTopic" },
+    { label: "인스타 카드뉴스", kind: "sns", ch: ["인스타그램", "디자인"], focus: "tTopic" },
+    { label: "블로그 글 1편", kind: "sns", ch: ["네이버 블로그"], focus: "tTopic" },
+    { label: "예약 안내 문자", kind: "general", gWork: "다음 달 예약 안내 문자 문구 3가지 써 줘", gResult: "복사해 쓸 문구 3개" },
+    { label: "경쟁사 비교", kind: "general", gWork: "근처 경쟁사 3곳의 메뉴·가격을 비교해 줘", gResult: "표 하나와 요약 3줄" },
+    { label: "후기 답글", kind: "general", gWork: "최근 고객 후기에 달 답글 초안을 써 줘", gResult: "복사해 쓸 답글" },
+  ];
+  function renderPresets() {
+    const box = $("#presetList");
+    box.textContent = "";
+    for (const p of PRESETS) {
+      const b = el("button", "chip-btn preset", p.label);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        form.querySelectorAll("input[name=kind]").forEach((r) => (r.checked = r.value === p.kind));
+        showKind();
+        if (p.ch) form.querySelectorAll("input[name=ch]").forEach((c) => (c.checked = p.ch.includes(c.value)));
+        if (p.gWork) $("#gWork").value = p.gWork;
+        if (p.gResult) $("#gResult").value = p.gResult;
+        saveDraft();
+        const f = $("#" + (p.focus || "gWork"));
+        f.focus();
+        if (f.select && p.gWork) f.setSelectionRange(f.value.length, f.value.length);
+      });
+      box.append(b);
+    }
+  }
+  renderPresets();
   function loadDraft() {
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT) || "{}");
@@ -1385,6 +1419,7 @@
     loadDraft();
     task.classList.remove("done");
     $("#copyMsg").textContent = "";
+    $("#taskSubmit").textContent = canSendTask() ? "Claude에 보내기" : "지시서 만들기";
     if (!task.open) task.showModal();
   }
   document.querySelectorAll("[data-open-task]").forEach((b) => b.addEventListener("click", openTask));
@@ -1415,9 +1450,7 @@
         "밖으로 보내기·올리기·결제·삭제는 하지 말고, 필요하면 대표에게 먼저 묻기",
         ...sitesForRoles(asg.roles),
       ].join("\n");
-      task.classList.add("done");
-      setupSendBox();
-      saveDraft();
+      finishTask();
       return;
     }
     const ch = [...form.querySelectorAll("input[name=ch]:checked")].map((c) => c.value);
@@ -1437,10 +1470,55 @@
       ...sitesForOrder(ch),
     ].join("\n");
     $("#taskOut").value = text;
+    finishTask();
+  });
+  // 지시서가 만들어지면: 보낼 수 있으면 바로 보내고, 아니면 복사 화면
+  function finishTask() {
     task.classList.add("done");
     saveDraft();
     setupSendBox();
-  });
+    if (canSendTask() && (DEMO || savedPin())) $("#taskSend").click();
+    else if (canSendTask()) $("#taskPin").focus();
+  }
+
+  // ------------------------------------------------------------ 보낸 업무 (보냄 → 진행 중 → 끝남)
+  const TASK_WORD = { new: "보냄", taken: "진행 중", done: "끝남", failed: "못함" };
+  const tasksDlg = $("#tasksDlg");
+  const taskList = (d) => ((d && Array.isArray(d.tasks)) ? d.tasks.filter((t) => t && t.id != null) : []).slice().reverse();
+  const agoText = (t) => { const v = ms(t); if (v == null) return ""; const m = (Date.now() - v) / 60000; return m < 1 ? "방금" : fmtMin(m) + " 전"; };
+  function updateTaskPill(d) {
+    const list = taskList(d);
+    const open = list.filter((t) => t.status === "new" || t.status === "taken");
+    $("#taskPill").classList.toggle("is-empty", !list.length);
+    $("#taskCount").textContent = open.length;
+    const waiting = list.filter((t) => t.status === "new").length;
+    $("#taskSub").textContent = !list.length ? "아직 보낸 업무 없음"
+      : waiting ? `${waiting}건 받는 Claude 기다림`
+      : open.length ? `${open.length}건 진행 중` : `최근: ${TASK_WORD[list[0].status] || list[0].status}`;
+    if (tasksDlg.open) renderTasks();
+  }
+  function renderTasks() {
+    const list = taskList(data);
+    const box = $("#tasksList");
+    box.textContent = "";
+    $("#tasksEmpty").hidden = !!list.length;
+    $("#tasksWarn").hidden = DEMO || !list.some((t) => t.status === "new" && (Date.now() - (ms(t.createdAt) ?? Date.now())) > 20000);
+    for (const t of list) {
+      const li = el("li", "tk-row tk-" + t.status);
+      li.append(el("span", "tk-st", TASK_WORD[t.status] || t.status));
+      const main = el("div", "tk-main");
+      main.append(el("b", null, t.summary || t.id));
+      const when = t.status === "done" || t.status === "failed" ? agoText(t.doneAt) : t.status === "taken" ? agoText(t.takenAt) + " 시작" : agoText(t.createdAt) + " 보냄";
+      main.append(el("span", "ap-meta", `${t.id} · ${when}`));
+      if (t.note) main.append(el("span", "tk-note", t.note));
+      li.append(main);
+      box.append(li);
+    }
+  }
+  $("#taskPill").addEventListener("click", () => { renderTasks(); if (!tasksDlg.open) tasksDlg.showModal(); });
+  $("#tasksClose").addEventListener("click", () => tasksDlg.close());
+  tasksDlg.addEventListener("click", (e) => { if (e.target === tasksDlg) tasksDlg.close(); });
+  tasksDlg.querySelectorAll("[data-open-task]").forEach((b) => b.addEventListener("click", () => tasksDlg.close()));
 
   // ------------------------------------------------------------ 업무 지시를 Claude 에 바로 보내기
   // 실제 서버(serve.mjs --pin)면 /api/task 로 보내고, 대기 중인 Claude 대화(/office-watch)가 받아 시작한다.
@@ -1451,11 +1529,14 @@
   function setupSendBox() {
     const box = $("#sendBox");
     box.hidden = !canSendTask();
+    task.classList.toggle("can-send", canSendTask());
+    $(".task-result").classList.toggle("no-send", !canSendTask());
     $("#copyBtn").className = canSendTask() ? "ghost" : "primary";
     const needPin = !DEMO && !savedPin();
     $("#taskPin").hidden = $("#taskPinLabel").hidden = !needPin;
     $("#sendMsg").textContent = "";
     $("#taskSend").disabled = false;
+    $("#taskSend").textContent = "Claude에 바로 보내기";
     sentTask = null;
   }
   function taskStatusText() {
@@ -1479,7 +1560,8 @@
     btn.disabled = true; btn.textContent = "보내는 중…";
     try {
       if (DEMO) {
-        sentTask = { id: "t" + Math.floor(Math.random() * 90 + 10), at: Date.now() };
+        const line = text.split("\n").find((l) => /^(할 일|주제):/.test(l)) || "";
+        sentTask = { id: DEMO.addTask ? DEMO.addTask(line.replace(/^(할 일|주제):\s*/, "").slice(0, 60)) : "t0", at: Date.now() };
       } else {
         const pin = $("#taskPin").hidden ? savedPin() : $("#taskPin").value.trim();
         if (!pin) throw new Error("사무실 비밀번호를 적어 주세요");

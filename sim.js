@@ -56,6 +56,11 @@
         ],
       },
     ];
+    // 시연용 '보낸 업무' 기록 (화면의 보낸 업무 목록)
+    const tasks = [
+      { id: "t1", status: "done", summary: "가을 립 톤, 진단 결과로 고르기", createdAt: iso(now() - 95 * MIN), takenAt: iso(now() - 94 * MIN), doneAt: iso(now() - 30 * MIN), note: "보고서: reports/2026-11-autumn-lip.md" },
+      { id: "t2", status: "taken", summary: "다음 달 예약 안내 문자 문구 3가지", createdAt: iso(now() - 18 * MIN), takenAt: iso(now() - 17 * MIN) },
+    ];
     // 시연용 결재: 실제 파일 대신 내용을 함께 들고 있다
     const approvals = [{
       id: "a1", sessionId: "s1", from: "본부장", status: "pending", submittedAt: iso(now() - 6 * MIN),
@@ -110,10 +115,16 @@
         if (s && s.state !== next) { s.state = next; s.stateSince = iso(now()); }
       }
     }
-    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, canPublish: { instagram: true, threads: true }, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })));
+    const snapshot = () => (paused ? frozen : JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, canPublish: { instagram: true, threads: true }, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals, tasks })));
     return {
       tick, snapshot, spawn, ask,
-      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, canPublish: { instagram: true, threads: true }, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals })) : null; },
+      addTask(summary) {
+        const t = { id: "t" + (tasks.length + 1), status: "new", summary, createdAt: iso(now()) };
+        tasks.push(t);
+        later(3000, () => { t.status = "taken"; t.takenAt = iso(now()); });
+        return t.id;
+      },
+      setPaused(v) { paused = v; frozen = v ? JSON.parse(JSON.stringify({ demo: true, canAnswer: true, canApprove: true, canSendTask: true, canPublish: { instagram: true, threads: true }, updatedAt: iso(now()), dayEnded, floors, sessions, questions, approvals, tasks })) : null; },
       setDayEnded(v) { dayEnded = v; },
       decide(id, decision, note) { const a = approvals.find((x) => x.id === id); if (a && a.status === "pending") { a.status = decision === "approve" ? "approved" : "revise"; a.decisionNote = note || ""; a.decidedAt = iso(now()); } },
       publish(id, ch) { const a = approvals.find((x) => x.id === id); if (a && a.status === "approved") { a.published = a.published || {}; a.published[ch] = { status: "publishing", at: iso(now()) }; later(4000, () => { a.published[ch] = { status: "done", at: iso(now()), url: "" }; }); } },
