@@ -891,6 +891,43 @@
   }
   const apDlg = $("#approvals");
   const postSpecs = new Map(); // "결재id:파일" → 게시본 내용 (손으로 올리기 복사용)
+  // 게시본의 그림 주소: 시연은 미리 담아 둔 그림, 실제는 사무실 서버의 파일
+  const postImgSrc = (ap, f) => { const v = ap.preview && ap.preview[f]; return typeof v === "string" && /^data:image\//.test(v) ? v : "api/file?path=" + encodeURIComponent(f); };
+  const postImgs = (j) => [...(j && Array.isArray(j.images) ? j.images : []), ...(j && j.image ? [j.image] : [])].map(String);
+  /** 올라갈 그림들: 옆으로 넘겨 보고, 누르면 크게 */
+  function imgStrip(ap, files, cls = "post-imgs") {
+    const strip = el("div", cls);
+    files.forEach((f, i) => {
+      const fig = el("figure", "post-img");
+      const im = el("img"); im.src = postImgSrc(ap, f); im.alt = `올릴 그림 ${i + 1}`; im.loading = "lazy";
+      im.addEventListener("error", () => im.replaceWith(el("span", "post-img-miss", "그림을 열지 못함")));
+      im.addEventListener("click", () => openLightbox(files.map((x) => postImgSrc(ap, x)), i));
+      fig.append(im);
+      if (files.length > 1) fig.append(el("figcaption", null, `${i + 1} / ${files.length}`));
+      strip.append(fig);
+    });
+    return strip;
+  }
+  // 크게 보기 (휴대폰에서 좌우로 넘김)
+  function openLightbox(srcs, start) {
+    let i = start;
+    const dlg = el("dialog", "lightbox");
+    const im = el("img"); const cap = el("p", "lb-cap");
+    const show = () => { im.src = srcs[i]; im.alt = `그림 ${i + 1}`; cap.textContent = srcs.length > 1 ? `${i + 1} / ${srcs.length}` : ""; prev.disabled = i <= 0; next.disabled = i >= srcs.length - 1; };
+    const prev = el("button", "ghost", "‹"); prev.type = "button"; prev.setAttribute("aria-label", "이전 그림");
+    const next = el("button", "ghost", "›"); next.type = "button"; next.setAttribute("aria-label", "다음 그림");
+    const close = el("button", "icon-btn lb-close", "✕"); close.type = "button"; close.setAttribute("aria-label", "닫기");
+    prev.addEventListener("click", () => { if (i > 0) { i--; show(); } });
+    next.addEventListener("click", () => { if (i < srcs.length - 1) { i++; show(); } });
+    close.addEventListener("click", () => dlg.close());
+    let x0 = null;
+    im.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    im.addEventListener("touchend", (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (dx < -40) next.click(); else if (dx > 40) prev.click(); });
+    dlg.addEventListener("close", () => dlg.remove());
+    const nav = el("div", "lb-nav"); nav.append(prev, cap, next);
+    dlg.append(close, im, nav);
+    document.body.append(dlg); show(); dlg.showModal();
+  }
   let apCurrent = null;
   function renderApList() {
     const list = pendingApprovals(data);
@@ -919,6 +956,8 @@
         const b = el("button", "ap-item");
         b.type = "button";
         const st = postChannels(ap).map((ch) => `${PUB_CH[ch]} ${pubStatusWord((ap.published || {})[ch])}`).join(" · ");
+        const first = (ap.files || []).find((f) => /\.(jpe?g|png|webp)$/i.test(f));
+        if (first) { b.classList.add("has-thumb"); const t = el("img", "ap-thumb"); t.src = postImgSrc(ap, first); t.alt = ""; t.loading = "lazy"; t.addEventListener("error", () => t.remove()); b.append(t); }
         b.append(el("b", null, ap.title), el("span", "ap-meta", st));
         b.addEventListener("click", () => openApproval(ap.id));
         li.append(b);
@@ -942,12 +981,13 @@
       if (j) postSpecs.set(ap.id + ":" + p, j);
       if (!j) { body.append(el("pre", "ap-pre", txt)); return; }
       const box = el("div", "post-preview");
+      box.append(el("p", "post-kind", /instagram/.test(p) ? "인스타그램에 올라갈 모습" : /threads/.test(p) ? "스레드에 올라갈 모습" : "올라갈 모습"));
+      if (postImgs(j).length) box.append(imgStrip(ap, postImgs(j)));
       if (j.ad) box.append(el("p", "ap-meta", "광고 글 (첫 줄 광고 표시 확인)"));
       if (j.caption != null) box.append(el("pre", "ap-pre", String(j.caption)));
       (Array.isArray(j.posts) ? j.posts : []).forEach((t, i) => box.append(el("p", "ap-meta", `${i + 1}번째 글`), el("pre", "ap-pre", String(t))));
       if (j.topicTag) box.append(el("p", "ap-meta", "주제 태그: " + j.topicTag));
-      const imgs = [...(Array.isArray(j.images) ? j.images : []), ...(j.image ? [j.image] : [])];
-      if (imgs.length) box.append(el("p", "ap-meta", "그림: " + imgs.join(", ")));
+
       body.append(box);
     };
     if (ext === "json") {
@@ -956,11 +996,12 @@
       catch (e) { body.append(el("p", "err", `게시본을 열지 못했습니다(${e.message}).`)); }
       return wrap;
     }
-    if (ap.preview && ap.preview[p] != null) { body.innerHTML = mdToHtml(ap.preview[p]); return wrap; }
-    if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
-      const img = el("img"); img.alt = p; img.loading = "lazy"; img.src = "api/file?path=" + encodeURIComponent(p);
+    if (["png", "jpg", "jpeg", "webp", "svg"].includes(ext)) {
+      const img = el("img"); img.alt = p; img.loading = "lazy"; img.src = postImgSrc(ap, p);
+      img.style.cursor = "zoom-in"; img.addEventListener("click", () => openLightbox([img.src], 0));
       body.append(img); return wrap;
     }
+    if (ap.preview && ap.preview[p] != null) { body.innerHTML = mdToHtml(ap.preview[p]); return wrap; }
     try {
       const r = await fetch("api/file?path=" + encodeURIComponent(p), { cache: "no-store" });
       if (!r.ok) throw new Error("HTTP " + r.status);
@@ -1056,6 +1097,8 @@
         const a = el("a", null, "게시물 보기"); a.href = p.url; a.target = "_blank"; a.rel = "noopener noreferrer"; info.append(a);
       }
       li.append(info);
+      const sp = postSpecs.get(ap.id + ":" + (ap.files || []).find((f) => String(f).split("/").pop() === `post-${ch}.json`));
+      if (sp && postImgs(sp).length) li.append(imgStrip(ap, postImgs(sp), "post-imgs pub-thumbs"));
       if (!(p && p.status === "done")) li.append(manualTools(ap, ch));
       const busy = p && (p.status === "publishing" || p.status === "done");
       // 검사에서 걸린 글은 다시 눌러도 또 걸린다 → 버튼 대신 수정 요청 안내

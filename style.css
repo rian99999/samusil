@@ -761,3 +761,24 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
 .q-opt.has-img { grid-template-columns: 30px 1fr; align-content: start; }
 .q-opt-img { grid-column: 1 / -1; width: 100%; aspect-ratio: 4 / 5; object-fit: contain; background: var(--surface-2); border: 1px solid var(--line); margin-bottom: 6px; }
 .q-opt-noimg { grid-column: 1 / -1; font-size: 12px; color: var(--muted); padding: 20px 0; text-align: center; border: 1px dashed var(--line); }
+
+/* 올라갈 그림 보기 */
+.post-kind { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.post-imgs { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+.post-imgs:has(.post-img:only-child) { grid-auto-columns: 100%; }
+.post-img { margin: 0; scroll-snap-align: start; display: grid; gap: 4px; }
+.post-img img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); cursor: zoom-in; display: block; }
+.post-img figcaption { font-size: 12px; color: var(--muted); text-align: center; }
+.post-img-miss { display: grid; place-items: center; aspect-ratio: 4 / 5; font-size: 12px; color: var(--muted); border: 1px dashed var(--line); }
+.pub-thumbs { flex-basis: 100%; grid-auto-columns: 30%; }
+.pub-thumbs:has(.post-img:only-child) { grid-auto-columns: 30%; }
+.ap-item.has-thumb { display: grid; grid-template-columns: 56px 1fr; column-gap: 12px; align-items: center; }
+.ap-item.has-thumb .ap-thumb { grid-row: span 2; width: 56px; aspect-ratio: 4 / 5; object-fit: cover; border: 1px solid var(--line); }
+.lightbox { border: 0; padding: 0; margin: 0; inset: 0; max-width: 100vw; max-height: 100dvh; width: 100vw; height: 100dvh; background: #141216; color: #fff; }
+.lightbox::backdrop { background: #141216; }
+.lightbox[open] { display: grid; grid-template-rows: auto 1fr auto; }
+.lightbox img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
+.lightbox .lb-close { justify-self: end; margin: 12px; background: #fff; }
+.lb-nav { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.lb-nav .ghost { min-width: 56px; min-height: 48px; font-size: 22px; background: #fff; color: #221F26; }
+.lb-cap { margin: 0; min-width: 48px; text-align: center; }

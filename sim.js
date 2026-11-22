@@ -74,13 +74,20 @@
         "work/demo/design.md": "사용한 스킬: rian-brand, design:design-critique, design:accessibility-review\n브랜드 검사: 오류 0 / 경고 0\n\n# 카드뉴스 4장 (1080×1350)\n\n1. **표지** — Mist Light 배경, 국문 헤드 Hahmlet Light 88px, Tourmaline 은 쓰지 않음\n2. **원인** — Raw 배경, 명도·채도 비교 칩 2개(고객 색 칩만 유채색)\n3. **고르는 법** — Raw 배경, 목록 기호는 Tourmaline 마름모 (이 장의 Tourmaline 한 곳)\n4. **예약 안내** — '예약 · 네이버 플레이스' 만 Tourmaline, RIAN 워드마크 좌상단\n\nFigma 미연결 – 설계서만 작성",
       },
     }];
+    const demoCard = (t1, t2, bg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" font-family="sans-serif"><rect width="1080" height="1350" fill="${bg}"/>` +
+      `<text x="90" y="260" font-size="92" font-weight="300" fill="#221F26">${t1}</text><text x="90" y="380" font-size="52" fill="#6B6670">${t2}</text>` +
+      `<rect x="90" y="520" width="400" height="400" fill="#D9D2E3"/><rect x="590" y="520" width="400" height="400" fill="#E6E4E7"/>` +
+      `<text x="90" y="1240" font-size="40" letter-spacing="12" fill="#221F26">RIAN</text></svg>`);
     // 시연용: 이미 승인돼 '게시 대기'인 결재 (실제로 올리지 않는다)
     approvals.push({
       id: "a2", sessionId: "s1", from: "본부장", status: "approved", submittedAt: iso(now() - 40 * MIN), decidedAt: iso(now() - 30 * MIN),
       title: "진단 결과로 립 고르기 — 인스타그램·스레드 게시본",
-      files: ["work/demo/post-instagram.json", "work/demo/post-threads.json"],
+      files: ["work/demo/post-instagram.json", "work/demo/post-threads.json", "work/demo/card-1.jpg", "work/demo/card-2.jpg"],
       preview: {
         "work/demo/post-instagram.json": JSON.stringify({ ad: false, caption: "같은 코랄인데 왜 나만 칙칙해 보일까요?\n\n원인은 색 이름이 아니라 명도와 채도 차이예요.\n\n#서면퍼스널컬러 #부산퍼스널컬러 #퍼스널컬러진단", images: ["work/demo/card-1.jpg", "work/demo/card-2.jpg"] }),
+        "work/demo/card-1.jpg": demoCard("같은 코랄인데", "왜 나만 칙칙해 보일까요?", "#EFE4E9"),
+        "work/demo/card-2.jpg": demoCard("원인은 명도·채도", "색 이름이 아니라 밝기와 맑기", "#F5F5F4"),
         "work/demo/post-threads.json": JSON.stringify({ ad: false, posts: ["같은 코랄 립인데 사람마다 달라 보이는 이유, 명도와 채도예요. 진단에서는 같은 계열 안에서 고르는 법을 알려 드려요."], topicTag: "퍼스널컬러" }),
       },
       published: {},
