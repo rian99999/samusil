@@ -11,7 +11,7 @@ body{background:var(--raw)}
 .head{display:flex;justify-content:space-between;align-items:flex-start}
 .logo b{display:block;font-family:"Tenor Sans",serif;font-weight:400;font-size:52px;letter-spacing:.34em;line-height:1}
 .logo span{display:block;margin-top:20px;font-family:"Tenor Sans",serif;font-size:15px;letter-spacing:.3em}
-.num{font-family:"Tenor Sans",serif;font-size:22px;letter-spacing:.2em;margin-top:8px}
+.cat{font-size:26px;font-weight:600;letter-spacing:.02em;padding:12px 30px;border:1.5px solid var(--onyx);border-radius:999px;background:rgba(255,255,255,.55)}
 .label{position:absolute;left:96px;top:330px;font-family:"Tenor Sans",serif;font-size:26px;letter-spacing:.24em}
 h1{position:absolute;left:92px;top:390px;font-family:"Hahmlet",serif;font-weight:300;font-size:118px;line-height:1.22;letter-spacing:-.02em}
 .panel{position:absolute;left:96px;right:96px;bottom:96px;background:var(--white);border-top:1px solid var(--onyx);
@@ -24,7 +24,7 @@ h1{position:absolute;left:92px;top:390px;font-family:"Hahmlet",serif;font-weight
 <div class="card" id="c">
   <div class="head">
     <div class="logo"><b>RIAN</b><span>PERSONAL COLOR &amp; MAKEUP</span></div>
-    <div class="num" id="num"></div>
+    <div class="cat" id="cat"></div>
   </div>
   <div class="label" id="label"></div>
   <h1 id="title"></h1>
@@ -32,11 +32,13 @@ h1{position:absolute;left:92px;top:390px;font-family:"Hahmlet",serif;font-weight
 </div>
 <script>
 const D={
- 1:{num:"01 / 03",label:"LOCATION &amp; PARKING",title:"위치 및<br>주차 안내",info:"테크노프라자 A동 · <em>지하 2층 주차</em>"},
- 2:{num:"02 / 03",label:"RESERVATION &amp; PRICE",title:"예약 방법과<br>가격 안내",info:"<em>네이버 예약</em> · 메뉴별 가격표"},
- 3:{num:"03 / 03",label:"STUDENT OFFER",title:"수험생<br>할인 안내",info:"수험표 지참 · <em>~ 2027.2.28</em>"}
+ 1:{label:"LOCATION &amp; PARKING",title:"위치 및<br>주차 안내",info:"테크노프라자 A동 · <em>지하 2층 주차</em>"},
+ 2:{label:"RESERVATION &amp; PRICE",title:"예약 방법과<br>가격 안내",info:"<em>네이버 예약</em> · 메뉴별 가격표"},
+ 3:{label:"STUDENT OFFER",title:"수험생<br>할인 안내",info:"수험표 지참 · <em>~ 2027.2.28</em>"}
 };
-const d=D[new URLSearchParams(location.search).get("n")||1];
+// 상단 카테고리: ?cat=공지사항 | 꿀팁 | 이벤트 ...
+const q=new URLSearchParams(location.search);
+const d=Object.assign({},D[q.get("n")||1],{cat:q.get("cat")||"공지사항"});
 for(const k in d) document.getElementById(k).innerHTML=d[k];
 </script>
 </body></html>
