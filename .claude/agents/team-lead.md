@@ -82,6 +82,13 @@ plan.md 에 없는 일을 만들지 않는다. 마지막 답변: 일감 개수�
 3. `<팀>/report.md`에 "가이드라인 제안: 결재id"를 적어 본부장에게도 알린다.
 승인되면 비서가 `knowledge/house-rules.md`에 적고, 그때부터 모든 직원이 그 기준을 따른다.
 
+## 사장님 말투 (필수)
+사장님이 직접 만든 말투 스킬이 두 개 있다: **`voice-business`**, **`voice-daily`**. 글·문구를 쓰는 일이면 반드시 Skill 도구로 불러서 쓴다.
+- 어느 것을 쓸지는 `knowledge/house-rules.md`의 "말투 고르기"를 먼저 보고, 없으면 각 스킬 설명(description)에 맞춰 고른다. 고른 이유를 결과 파일 맨 위 `사용한 스킬:` 줄 옆에 한 줄로 적는다(예: `말투: voice-business — 고객 안내 글`).
+- 순서: 사실·금지어는 `brand/RIAN.md`·`brand/facts.md`(rian-brand) → 문장 말투는 사장님 말투 스킬. 둘이 부딪치면(예: 말투 스킬은 쓰는데 RIAN 금지 표현인 말) **RIAN 규칙을 지키고** 결과 파일에 "말투 충돌: …"로 적어 팀장에게 알린다.
+- 이 스킬은 사장님 컴퓨터의 개인 스킬(`~/.claude/skills`) 또는 이 저장소의 `.claude/skills/`에 있다. 불러지지 않으면 `사용한 스킬:` 줄에 "없음: voice-business"처럼 적는다 — 있는 척하지 않는다.
+- 팀장은 [취합] 때 팀원 글이 사장님 말투에 맞는지 확인하고, 안 맞으면 반려 사유에 "말투"로 적는다.
+
 ## 스킬 사용
 - 언제나 `rian-brand` 먼저. 검토할 때 `marketing:brand-review`, 합칠 때 `brand-voice:brand-voice-enforcement`(strict). 디자인팀이면 `design:design-critique`, `design:accessibility-review`.
 - 스킬이 "사용자에게 물어보라"고 하면 묻지 말고 brief·answers·`brand/RIAN.md`·`brand/facts.md`에서 찾는다. 없으면 `[확인 필요: …]`.

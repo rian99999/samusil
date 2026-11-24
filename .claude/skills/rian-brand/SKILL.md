@@ -19,6 +19,7 @@ description: 리안 퍼스널컬러&메이크업(RIAN)의 글·카드뉴스·시
 검사기는 규칙 일부만 기계로 본다(금지어, 상호 표기, 금액, 건물명, 계좌번호, 해시태그 수, 색 코드 등). 말투가 RIAN 다운지, 고객을 고칠 대상으로 그리지 않는지는 RIAN.md 5장으로 직접 판단한다.
 
 ## 함께 쓰는 스킬 (설치 확인 2026.11)
+- **사장님 말투(필수):** `voice-business`, `voice-daily` — 사실·금지어는 이 스킬(RIAN), 문장 말투는 사장님 말투 스킬. 부딪치면 RIAN 규칙 우선, "말투 충돌"로 기록.
 - 글: `marketing:draft-content`, `marketing:content-creation`, `marketing:seo-audit`(키워드 조사만), `brand-voice:brand-voice-enforcement`, `design:ux-copy`
 - 검수: `marketing:brand-review`, `design:design-critique`, `design:accessibility-review`
 - 시안: `figma:figma-use`·`figma:figma-generate-design`, `canva:edit-design`·`canva:resize-for-social-media`·`canva:brand-check`
