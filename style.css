@@ -782,3 +782,15 @@ body.demo .status:not(.checking) .dot { background: var(--muted); }
 .lb-nav { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
 .lb-nav .ghost { min-width: 56px; min-height: 48px; font-size: 22px; background: #fff; color: #221F26; }
 .lb-cap { margin: 0; min-width: 48px; text-align: center; }
+
+/* 사이트 연결 확인 */
+.site-check-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 16px; }
+.site-check-bar .primary { min-height: 44px; }
+.site-status { display: grid; gap: 2px; font-size: 12.5px; margin-top: 4px; }
+.ss-ok { color: #2f6b3f; font-weight: 600; }
+.ss-bad { color: #a33; font-weight: 600; }
+.ss-warn { color: #8a5a00; }
+.ss-none, .ss-time { color: var(--muted); }
+.k-lead { background: var(--surface-2); border: 1px dashed var(--line); }
+.q-esc { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; background: var(--ink); color: var(--surface); margin-bottom: 4px; }
+.ap-kind { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 6px; border: 1px solid var(--ink); margin-right: 6px; vertical-align: 2px; }

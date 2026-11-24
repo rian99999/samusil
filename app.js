@@ -334,7 +334,10 @@
   function apply(d) {
     const sessions = Array.isArray(d.sessions) ? d.sessions.filter((s) => s && s.id != null) : [];
     // 답이 기록된 질문은 줄에서 빠진다 (직원 쪽이 답을 받아 처리하는 중)
-    const questions = Array.isArray(d.questions) ? d.questions.filter((q) => q && q.id != null && !q.answer && !sentIds.has(String(q.id))) : [];
+    // 팀원 질문은 먼저 팀장이 받는다(to: "lead") → 대표실 줄·질문함에는 사장님께 올라온 것만
+    const allOpenQs = Array.isArray(d.questions) ? d.questions.filter((q) => q && q.id != null && !q.answer && !sentIds.has(String(q.id))) : [];
+    const questions = allOpenQs.filter((q) => q.to !== "lead");
+    const leadQs = allOpenQs.filter((q) => q.to === "lead");
     buildFloors(Array.isArray(d.floors) ? d.floors.filter((f) => f && f.id != null && f.id !== "ceo") : []);
     const nowSrv = ms(d.updatedAt);
     const now = performance.now();
@@ -437,6 +440,10 @@
       chip(`작업 ${c.working}`, "k-work"); chip(`막힘 ${c.blocked}`, "k-block");
       chip(`보고 ${c.reporting}`, "k-report"); chip(`대기 ${c.idle}`, "k-idle");
       if (f.kind === "ceo") chip(`질문 ${questions.length}`, "k-ask");
+      if (f.kind !== "ceo") {
+        const n = leadQs.filter((q) => { const s = sessions.find((x) => String(x.id) === String(q.sessionId)); return s && s.floor === f.id; }).length;
+        if (n) chip(`팀장에게 질문 ${n}`, "k-lead");
+      }
       if (f.kind === "ceo" && pendingApprovals(d).length) chip(`결재 ${pendingApprovals(d).length}`, "k-ask");
       if (overflow) chip(`자리 부족 +${overflow}명 (표시 안 됨)`, "overflow");
       f.cnt.textContent = f.kind === "ceo" ? `${list.length}명 · 질문 ${questions.length}` : `${list.length}명`;
@@ -619,7 +626,7 @@
   const saveAnswers = () => { try { localStorage.setItem(ANS_KEY, JSON.stringify(answers)); } catch (_) {} };
   const QUICK = ["네, 그렇게 해 주세요.", "아니요, 하지 마세요.", "알아서 정해 주세요."];
   function currentQuestions() {
-    const qs = (data && Array.isArray(data.questions)) ? data.questions.filter((q) => q && q.id != null && !q.answer && !sentIds.has(String(q.id))) : [];
+    const qs = (data && Array.isArray(data.questions)) ? data.questions.filter((q) => q && q.id != null && q.to !== "lead" && !q.answer && !sentIds.has(String(q.id))) : [];
     return qs.slice().sort((a, b) => (ms(a.askedAt) ?? 0) - (ms(b.askedAt) ?? 0));
   }
   function asker(q) {
@@ -699,6 +706,7 @@
       const t = ms(q.askedAt);
       head.append(el("b", null, asker(q)), el("span", "q-wait", t != null ? `${fmtMin(Math.max(0, (nowSrv - t) / 60000))} 기다림` : ""));
       const text = el("p", "q-text", q.text || "(내용 없음)");
+      if (q.escalatedBy) text.prepend(el("span", "q-esc", `팀장이 올림${q.escalateReason ? " · " + q.escalateReason : ""}`), document.createElement("br"));
       const ta = el("textarea");
       ta.id = "ans-" + q.id; ta.rows = 2; ta.placeholder = "여기에 답을 적으세요";
       ta.value = answers[q.id] || "";
@@ -942,7 +950,9 @@
       const sess = (data.sessions || []).find((x) => String(x.id) === String(ap.sessionId));
       const who2 = sess ? who(sess).label : ap.from;
       const t = ms(ap.submittedAt);
-      b.append(el("b", null, ap.title), el("span", "ap-meta", `${who2} · 자료 ${(ap.files || []).length}개${t != null ? ` · ${fmtMin(Math.max(0, (nowSrv - t) / 60000))} 전` : ""}`));
+      const tt = el("b", null, ap.title);
+      if (ap.kind === "guideline") tt.prepend(el("span", "ap-kind", "가이드라인 제안"));
+      b.append(tt, el("span", "ap-meta", `${who2} · 자료 ${(ap.files || []).length}개${t != null ? ` · ${fmtMin(Math.max(0, (nowSrv - t) / 60000))} 전` : ""}`));
       b.addEventListener("click", () => openApproval(ap.id));
       li.append(b);
       box.append(li);
@@ -1237,7 +1247,7 @@
       top.append(a, chip, del);
       const url = el("div", "site-url", x.url);
       const who = el("div", "site-who", "연결: " + x.roles.map(roleName).join(", "));
-      li.append(top, url, who);
+      li.append(top, url, who, siteStatusEl(x.url));
       list.append(li);
     }
     // 직원 고르기 칸
@@ -1250,6 +1260,47 @@
       box.append(lab);
     }
   }
+  // ------------------------------------------------------------ 사이트 연결 확인
+  const SITECHECK_KEY = "office-sitecheck";
+  let siteChecks = {};
+  try { siteChecks = JSON.parse(localStorage.getItem(SITECHECK_KEY) || "{}") || {}; } catch (_) {}
+  function siteStatusEl(url) {
+    const r = siteChecks[url];
+    const box = el("div", "site-status");
+    if (!r) { box.append(el("span", "ss-none", "아직 확인 안 함")); return box; }
+    const when = new Date(r.checkedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    if (r.ok) box.append(el("span", "ss-ok", `✓ 열림 · ${(r.ms / 1000).toFixed(1)}초${r.title ? " · " + r.title : ""}`));
+    else box.append(el("span", "ss-bad", "✗ " + (r.reason || "열리지 않음")));
+    if (r.claudeBlocked) box.append(el("span", "ss-warn", "△ Claude 웹 읽기 도구로는 못 여는 곳 → 직원은 사무실 '사이트 읽기' 도구로 읽습니다"));
+    box.append(el("span", "ss-time", `확인: ${when}`));
+    return box;
+  }
+  async function checkSites() {
+    const items = siteList();
+    if (!items.length) { $("#siteCheckMsg").textContent = "연결한 사이트가 없습니다."; return; }
+    const btn = $("#siteCheckAll");
+    btn.disabled = true; $("#siteCheckMsg").textContent = `${items.length}곳 확인 중… (최대 10초)`;
+    try {
+      let results;
+      if (DEMO) {
+        await new Promise((r) => setTimeout(r, 800));
+        results = items.map((x, i) => ({ url: x.url, ok: i % 3 !== 2, ms: 600 + i * 150, title: x.name, reason: "로그인해야 보이는 곳 — 직원은 로그인하지 않으므로 내용을 못 읽음", claudeBlocked: /blog\.naver\.com/.test(x.url), checkedAt: new Date().toISOString() }));
+      } else {
+        const r = await fetch("api/site-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ urls: items.map((x) => x.url) }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+        results = j.results || [];
+      }
+      for (const r of results) siteChecks[r.url] = r;
+      try { localStorage.setItem(SITECHECK_KEY, JSON.stringify(siteChecks)); } catch (_) {}
+      const ok = results.filter((r) => r.ok).length;
+      $("#siteCheckMsg").textContent = `${results.length}곳 중 ${ok}곳 열림${ok < results.length ? `, ${results.length - ok}곳 문제 있음` : ""}.${DEMO ? " (시연)" : ""}`;
+      renderSites();
+    } catch (e) {
+      $("#siteCheckMsg").textContent = `확인하지 못했습니다(${e.message}). 사무실 서버(serve.mjs)로 연 화면에서 해 주세요.`;
+    } finally { btn.disabled = false; }
+  }
+  $("#siteCheckAll").addEventListener("click", checkSites);
   function openSites() { renderSites(); $("#siteMsg").textContent = ""; $("#siteErr").textContent = ""; if (!sitesDlg.open) sitesDlg.showModal(); }
   document.querySelectorAll("[data-open-sites]").forEach((b) => b.addEventListener("click", () => {
     const parent = b.closest("dialog"); if (parent && parent !== sitesDlg) parent.close();

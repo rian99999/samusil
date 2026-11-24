@@ -29,15 +29,16 @@ for (const f of readdirSync(DIR).filter((x) => x.endsWith(".md") && !["README.md
     if (!/^- /.test(line)) return;
     if (/출처|그래서|적용|지킬|꼭 물어/.test(section)) return;
     if (f === "request-defaults.md") return;
-    if (!/\[(공식|보도|미확인)/.test(line)) missing.push(n + 1);
+    if (!/\[(공식|보도|미확인|사장님 결정)/.test(line)) missing.push(n + 1);
   });
   const grades = { 공식: (text.match(/\[공식[ ·(]/g) || []).length, 보도: (text.match(/\[보도/g) || []).length, 미확인: (text.match(/\[미확인/g) || []).length };
-  out.push({ file: "knowledge/" + f, checked, age, stale: age == null || age > maxAge, missing, grades });
+  const noExpiry = /갱신 주기:\s*없음/.test(text); // 사장님 결정 파일은 날짜로 낡지 않음
+  out.push({ file: "knowledge/" + f, checked, age, stale: !noExpiry && (age == null || age > maxAge), noExpiry, missing, grades });
 }
 
 if (json) { console.log(JSON.stringify(out, null, 2)); process.exit(out.some((x) => x.stale) ? 1 : 0); }
 for (const x of out) {
-  const st = x.checked == null ? "✗ 확인 날짜 없음" : x.stale ? `✗ 오래됨 (${x.age}일)` : `✓ ${x.age}일 전 확인`;
+  const st = x.noExpiry ? "✓ 사장님 기준(기한 없음)" : x.checked == null ? "✗ 확인 날짜 없음" : x.stale ? `✗ 오래됨 (${x.age}일)` : `✓ ${x.age}일 전 확인`;
   console.log(`${st}  ${x.file}  공식 ${x.grades.공식} · 보도 ${x.grades.보도} · 미확인 ${x.grades.미확인}`);
   if (x.missing.length) console.log(`   △ 근거 등급 없는 줄: ${x.missing.join(", ")}`);
 }

@@ -41,7 +41,7 @@ export function findAlerts(s, now = Date.now()) {
   const name = (id) => ((s.sessions || []).find((x) => x.id === id) || {}).name || id;
 
   for (const q of s.questions || []) {
-    if (q.answer) continue;
+    if (q.answer || q.to === "lead") continue; // 팀장에게 먼저 묻는 질문은 사장님께 알리지 않음
     const m = age(q.askedAt, now);
     add(`q:${q.id}:new`, "question", `질문 ${q.id} — ${q.from || name(q.sessionId)}`, "답이 필요합니다. 질문함에서 답해 주세요.", "#q", 4, ["question"]);
     if (m >= 10 && m < 60) add(`q:${q.id}:10`, "question", `질문 ${q.id} 10분째 대기`, "직원이 답을 기다리며 멈춰 있습니다.", "#q", 4, ["hourglass"]);
@@ -50,7 +50,7 @@ export function findAlerts(s, now = Date.now()) {
   for (const a of s.approvals || []) {
     if (a.status === "pending") {
       const m = age(a.submittedAt, now);
-      add(`a:${a.id}:new`, "approval", `결재 ${a.id} — 확인해 주세요`, String(a.title || "").slice(0, 80), "#" + a.id, 4, ["clipboard"]);
+      add(`a:${a.id}:new`, "approval", a.kind === "guideline" ? `가이드라인 제안 ${a.id} — 정해 주세요` : `결재 ${a.id} — 확인해 주세요`, String(a.title || "").slice(0, 80), "#" + a.id, 4, ["clipboard"]);
       if (m >= 30 && m < 120) add(`a:${a.id}:30`, "approval", `결재 ${a.id} 30분째 대기`, String(a.title || "").slice(0, 80), "#" + a.id, 4, ["hourglass"]);
       if (m >= 120) add(`a:${a.id}:120`, "approval", `결재 ${a.id} 2시간째 대기`, String(a.title || "").slice(0, 80), "#" + a.id, 5, ["warning"]);
     }

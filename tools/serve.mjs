@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { publicSetup } from "./secrets.mjs";
 import { startWatcher } from "./watch.mjs";
+import { checkSite } from "./site-read.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = process.env.OFFICE_STATE || path.join(ROOT, "office-state.json");
@@ -148,6 +149,16 @@ function manualPostedApi(req, res) {
     send(r.ok ? 200 : 409, r.ok ? { ok: true } : { error: r.error });
   });
 }
+// 사이트 연결 확인: 사무실 컴퓨터에서 직접 열어 본다(직원이 읽는 것과 같은 길). 같은 화면에서 온 요청만.
+function siteCheckApi(req, res) {
+  const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  readJson(req, res, send, async (j) => {
+    const urls = Array.isArray(j.urls) ? [...new Set(j.urls.map(String))].slice(0, 20) : [];
+    if (!urls.length) return send(400, { error: "확인할 주소가 없습니다" });
+    const results = await Promise.all(urls.map((u) => checkSite(u)));
+    send(200, { results });
+  });
+}
 function decideApi(req, res) {
   const send = (code, obj) => { res.writeHead(code, { "content-type": TYPES[".json"], "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
   readJson(req, res, send, async (j) => {
@@ -198,6 +209,7 @@ http.createServer((req, res) => {
   if (url.pathname === "/api/task") return taskApi(req, res);
   if (url.pathname === "/api/publish") return publishApi(req, res);
   if (url.pathname === "/api/manual-posted") return manualPostedApi(req, res);
+  if (url.pathname === "/api/site-check") return siteCheckApi(req, res);
   if (url.pathname === "/api/file") return fileApi(url, res);
   const rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname).replace(/^\/+/, "");
   if (!PUBLIC.has(rel)) { res.writeHead(404); return res.end("not found"); }

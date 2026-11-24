@@ -5,7 +5,8 @@
 //   node tools/office.mjs state <id> working|blocked|reporting|idle
 //   node tools/office.mjs end   <id>                 # 퇴근
 //   node tools/office.mjs ask   <id> "질문 내용" [--option "A|라벨|어디에|work/…/a.png" …] [--visual work/…/지금.png]  # 질문(안마다 예시 그림)
-//   node tools/office.mjs reply  <질문id> --text "답"  # 사장님 답 기록 (화면의 '보내기'가 쓰는 명령)
+//   node tools/office.mjs reply  <질문id> --text "답" [--via lead]  # 답 기록 (사장님 화면 / 팀장 답)
+//   node tools/office.mjs escalate <질문id> --reason "왜" [--option …]  # 팀장 → 사장님께 올리기
 //   node tools/office.mjs wait   <질문id> [--timeout 분] # 답이 올 때까지 기다렸다가 답을 출력
 //   node tools/office.mjs answer <질문id>             # 줄에서 빠짐(처리 끝)
 //   node tools/office.mjs submit <id> --title "제목" --file work/<작업>/a.md [--file …]  # 결재 올리기 → 결재id
@@ -125,13 +126,19 @@ switch (cmd) {
     });
     const qid = withLock((s) => {
       const x = s.sessions.find((y) => y.id === id);
-      const q = { id: "q" + (++s.seq), sessionId: id, from: x ? x.name : id, text, askedAt: nowIso(),
+      // 누구에게 묻나: 팀원 → 팀장 먼저(to: lead). 팀장·본부장 → 사장님(to: owner). --to 로 바꿀 수 있다.
+      const isStaff = x && x.role && x.role !== "director" && !/-lead$/.test(x.role);
+      const to = o.to ? String(o.to) : isStaff ? "lead" : "owner";
+      if (!["lead", "owner"].includes(to)) die("--to 는 lead|owner");
+      const q = { id: "q" + (++s.seq), sessionId: id, from: x ? x.name : id, text, askedAt: nowIso(), to,
+        ...(to === "lead" && x && x.parentId ? { leadId: x.parentId } : {}),
         ...(opts.length ? { options: opts } : {}),
         ...(o.visual ? { visual: { src: checkImg(o.visual), title: String(o["visual-title"] || "지금까지 만든 것").slice(0, 80) } } : {}) };
       s.questions.push(q);
       return q.id;
     });
     console.log(qid);
+    if (load().questions.find((q) => q.id === qid)?.to === "lead") { console.error("(팀장에게 먼저 묻는 질문 — 사장님 알림은 보내지 않음)"); break; }
     const nq = await notify({ event: "question", title: `질문 ${qid} — 답이 필요합니다`, message: "사무실 화면의 질문함에서 답해 주세요.", path: "#q" , tags: ["question"] });
     if (nq.sent) markSent(`q:${qid}:new`); else if (!/주제.*없음/.test(nq.reason)) console.error("알림 못 보냄: " + nq.reason);
     break;
@@ -158,6 +165,29 @@ switch (cmd) {
       if (Date.now() > limit) { console.log(JSON.stringify({ id, status: "timeout" })); process.exit(2); }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
     }
+  }
+  case "escalate": {
+    // 팀장이 답할 수 없는 질문(사장님 결정·가격·허락 등)을 사장님께 올린다. 예시 그림(--option)을 더 붙일 수 있다.
+    const reason = String(o.reason || "").trim();
+    if (!reason) die("왜 사장님께 올리는지 적어 주세요 (--reason)");
+    const extra = [].concat(o.option || []).map((v) => {
+      const [key, label, where, image] = String(v).split("|").map((x) => (x || "").trim());
+      if (!key || !label) die("--option 은 \"A|라벨|어디에|work/…/a.png\" 모양이어야 합니다: " + v);
+      return { key: key.slice(0, 2), label: label.slice(0, 80), ...(where ? { where: where.slice(0, 80) } : {}), ...(image ? { image: checkImg(image) } : {}) };
+    });
+    const q = withLock((s) => {
+      const q = s.questions.find((x) => x.id === id);
+      if (!q) die("없는 질문: " + id);
+      if (q.to === "owner") die("이미 사장님께 올라간 질문: " + id);
+      q.to = "owner"; q.escalatedBy = o.by || q.leadId || "lead"; q.escalateReason = reason.slice(0, 120); q.escalatedAt = nowIso();
+      if (o.text) q.text = String(o.text).slice(0, 500);
+      if (extra.length) q.options = extra;
+      return { ...q };
+    });
+    console.log("사장님께 올림: " + id);
+    const ne = await notify({ event: "question", title: `질문 ${id} — 팀장이 사장님께 올림`, message: q.escalateReason, path: "#q", tags: ["question"] });
+    if (ne.sent) markSent(`q:${id}:new`);
+    break;
   }
   case "answer":
     withLock((s) => { s.questions = s.questions.filter((q) => q.id !== id); });
@@ -191,14 +221,14 @@ switch (cmd) {
       const x = s.sessions.find((y) => y.id === id);
       const a = { id: "a" + (s.aseq = (s.aseq || 0) + 1), sessionId: id, from: x ? x.name : id, title,
         files: files.map((f) => path.relative(ROOT, path.resolve(ROOT, f)).split(path.sep).join("/")),
-        note: o.note || "", submittedAt: nowIso(), status: "pending",
+        note: o.note || "", submittedAt: nowIso(), status: "pending", ...(o.kind === "guideline" ? { kind: "guideline" } : {}),
         // 결재할 때 본 내용 그대로인지 게시 직전에 확인하려고, 파일마다 지문(sha256)을 남긴다
         hashes: Object.fromEntries(files.map((f) => [path.relative(ROOT, path.resolve(ROOT, f)).split(path.sep).join("/"), sha256(path.resolve(ROOT, f))])) };
       s.approvals.push(a);
       return a.id;
     });
     console.log(aid);
-    const na = await notify({ event: "approval", title: `결재 ${aid} — 확인해 주세요`, message: title.slice(0, 80), path: "#" + aid, tags: ["clipboard"] });
+    const na = await notify({ event: "approval", title: o.kind === "guideline" ? `가이드라인 제안 ${aid} — 정해 주세요` : `결재 ${aid} — 확인해 주세요`, message: title.slice(0, 80), path: "#" + aid, tags: ["clipboard"] });
     if (na.sent) markSent(`a:${aid}:new`); else if (!/주제.*없음/.test(na.reason)) console.error("알림 못 보냄: " + na.reason);
     break;
   }
@@ -310,5 +340,5 @@ switch (cmd) {
     console.log("초기화");
     break;
   default:
-    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 23).join("\n"));
+    console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 25).join("\n"));
 }
