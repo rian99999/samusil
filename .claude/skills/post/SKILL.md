@@ -36,6 +36,8 @@ description: 리안 홍보 글 하나를 빠르게 — 사장님이 한 줄로 �
 
 ## 5. "올려" — 사장님이 이 초안을 보고 승인했을 때만
 ### 5-0. 계정 확인
+- 리안 가게 인스타: **@rian.color_makeup** (platformAccountId `29138448142481400`, 2026-11-25 연결). 이 계정에만 올린다. 목록에 다른 인스타 계정이 보이면 올리지 말고 사장님께 확인한다.
+- vidIQ 요금제상 인스타 계정은 1개만 연결된다.
 `mcp__vidIQ__vidiq_social_account_list` → 인스타그램·스레드에 `canPublish: true`인 계정이 있어야 한다.
 - 없으면: "인스타(또는 스레드) 연결이 필요합니다"라고 말하고 사장님이 원하면 `vidiq_social_account_connect`(platform INSTAGRAM / THREADS, oauth). 받은 연결 링크·화면을 보여 주고 사장님이 끝낼 때까지 기다린 뒤 다시 확인. **연결 링크를 대신 열지 않는다.**
 - vidIQ 도구가 이 세션에 없으면: 5-3(손으로 올리기)으로 간다.
