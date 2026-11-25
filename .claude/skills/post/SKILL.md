@@ -9,7 +9,7 @@ description: 리안 홍보 글 하나를 빠르게 — 사장님이 한 줄로 �
 
 ## 0. 준비 (매번, 짧게)
 - Skill 도구로 `rian-brand` → `brand/RIAN.md`·`brand/facts.md`·`knowledge/house-rules.md` 확인.
-- 사장님 말투: `voice-business` / `voice-daily` 중 맞는 것을 Skill 도구로 부른다(고객 안내·예약·가격 글 → business 쪽이 맞는지 각 스킬 설명으로 판단, `house-rules.md`의 "말투 고르기"가 있으면 그것). 불러지지 않으면 초안에 "말투 스킬 없음"이라고 알린다.
+- 사장님 말투: `knowledge/house-rules.md`의 "말투 고르기"대로 Skill 도구로 부른다 — **인스타·네이버 = voice-business**, **스레드 = 스레드 분위기(voice-daily 호흡, 가게 정보는 마지막 한 줄만)**. 같은 파일의 "바꿔 쓰는 것"(무조건·최고 금지)과 예약 안내 문구(예약은 네이버 예약, 문의는 카카오톡 플러스친구)를 지킨다. 불러지지 않으면 초안에 "말투 스킬 없음"이라고 알린다.
 - 짧은 지시는 `knowledge/request-defaults.md`로 풀어 읽는다. **채널을 안 말했으면 인스타+스레드.** 네이버는 말했을 때만.
 - 묻는 것은 `request-defaults.md` 3장("꼭 물어야 하는 것")에 걸릴 때만, **AskUserQuestion 한 번에 한 질문**, 선택지마다 `preview`에 실제 문구 예시.
 
