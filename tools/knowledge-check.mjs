@@ -29,7 +29,7 @@ for (const f of readdirSync(DIR).filter((x) => x.endsWith(".md") && !["README.md
     if (!/^- /.test(line)) return;
     if (/출처|그래서|적용|지킬|꼭 물어/.test(section)) return;
     if (f === "request-defaults.md") return;
-    if (!/\[(공식|보도|미확인|사장님 결정)/.test(line)) missing.push(n + 1);
+    if (!/\[(공식|보도|미확인|사장님 결정|brand\/|voice-)/.test(line)) missing.push(n + 1);
   });
   const grades = { 공식: (text.match(/\[공식[ ·(]/g) || []).length, 보도: (text.match(/\[보도/g) || []).length, 미확인: (text.match(/\[미확인/g) || []).length };
   const noExpiry = /갱신 주기:\s*없음/.test(text); // 사장님 결정 파일은 날짜로 낡지 않음
