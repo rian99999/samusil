@@ -22,6 +22,7 @@ description: 리안 홍보 글 하나를 빠르게 — 사장님이 한 줄로 �
 - `node tools/brand-check.mjs work/<작업>/*.md` → 오류 0 될 때까지 고친다.
 
 ## 2. 그림 (인스타는 필수, 스레드는 선택)
+**네이버 블로그는 썸네일 1장만**(사장님이 따로 요청할 때만 본문 그림 추가): `work/<작업>/thumb.json` → `node tools/thumb.mjs work/<작업>/thumb.json` → 1080×1080 JPEG. 공지 `"kind":"notice"`(보라), 정보성 글 `"kind":"info"`(미색). 카테고리 칩(공지사항·메이크업 팁 등), 영문 라벨, 2줄 제목, 하단 띠 한 줄(별표 안 한 곳만 Tourmaline). 블로그 본문에는 그림 자리를 넣지 않는다.
 `work/<작업>/cards.json`을 쓰고 `node tools/card.mjs work/<작업>/cards.json` → `images/card-N.jpg`(1080×1350 JPEG) + `images/sheet.png`.
 - 3~5장. 첫 장 `"style":"mist"`, 나머지 `"raw"`. Tourmaline(`accent`)은 마지막 장 예약 안내 한 곳만. 카드 글자는 원고와 같은 문장.
 - 사장님이 사진을 주면 그 사진을 쓴다(필터·보정 금지, 얼굴은 동의받은 것만).
